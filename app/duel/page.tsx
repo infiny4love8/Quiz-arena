@@ -10,16 +10,18 @@ export default function DuelPage() {
 
   useEffect(() => {
     const fetchCoins = async () => {
-      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
       const { data } = await supabase
         .from("users")
         .select("coins")
         .eq("id", user.id)
         .single();
+
       if (data) setCoins(data.coins);
     };
+
     fetchCoins();
   }, []);
 
@@ -58,11 +60,9 @@ export default function DuelPage() {
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white">
-      {/* Fond décoratif */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-orange-500/5 blur-[120px] rounded-full" />
         <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-500/5 blur-[100px] rounded-full" />
-        {/* Grille subtile */}
         <div
           className="absolute inset-0 opacity-[0.03]"
           style={{
@@ -75,7 +75,6 @@ export default function DuelPage() {
 
       <div className="relative z-10 max-w-2xl mx-auto px-5 py-16">
 
-        {/* Header */}
         <div className="mb-14">
           <p className="text-xs uppercase tracking-[0.4em] text-white/30 mb-4">Mode</p>
           <div className="flex items-end gap-4 mb-5">
@@ -94,11 +93,9 @@ export default function DuelPage() {
           </p>
         </div>
 
-        {/* Étapes */}
         <div className="mb-12 space-y-0">
           {steps.map((step, i) => (
             <div key={step.number} className="flex gap-5 group">
-              {/* Ligne verticale + numéro */}
               <div className="flex flex-col items-center">
                 <div className="w-10 h-10 rounded-full border border-white/10 bg-white/5 flex items-center justify-center flex-shrink-0 group-hover:border-orange-400/50 group-hover:bg-orange-500/10 transition-all duration-300">
                   <span className="text-xs font-black text-white/40 group-hover:text-orange-400 transition-colors">
@@ -110,7 +107,6 @@ export default function DuelPage() {
                 )}
               </div>
 
-              {/* Contenu */}
               <div className={`pb-8 ${i === steps.length - 1 ? "pb-0" : ""}`}>
                 <div className="flex items-center gap-2 mb-1">
                   <span style={{ fontSize: "16px" }}>{step.icon}</span>
@@ -124,7 +120,6 @@ export default function DuelPage() {
           ))}
         </div>
 
-        {/* Encart règles rapides */}
         <div className="mb-10 rounded-2xl border border-white/8 bg-white/[0.03] p-5 grid grid-cols-3 gap-4 text-center">
           <div>
             <p className="text-2xl font-black text-orange-400">90s</p>
@@ -140,7 +135,6 @@ export default function DuelPage() {
           </div>
         </div>
 
-        {/* Bouton principal */}
         <button
           onClick={() => router.push("/duel/challenge")}
           className="w-full group relative rounded-2xl bg-orange-500 px-8 py-5 font-black text-lg text-black transition-all duration-300 hover:bg-orange-400 hover:scale-[1.01] active:scale-[0.99] overflow-hidden"
@@ -149,11 +143,9 @@ export default function DuelPage() {
             <span>Lancer un duel</span>
             <span className="text-xl group-hover:translate-x-1 transition-transform duration-200">→</span>
           </span>
-          {/* Shine effect */}
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
         </button>
 
-        {/* Note bas de page */}
         <p className="text-center text-xs text-white/20 mt-5">
           Le duel fun (sans pari) est gratuit · Aucun coin requis
         </p>
