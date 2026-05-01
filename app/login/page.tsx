@@ -7,39 +7,35 @@ import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 
 export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
-
-    const formData = new FormData(e.currentTarget);
-
-    const email = String(formData.get("email"));
-    const password = String(formData.get("password"));
+    setError("");
 
     try {
-      // ✅ login direct avec Supabase
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        alert(error.message);
+        setError(error.message);
         setLoading(false);
         return;
       }
 
-      // ✅ redirection propre
       router.push("/dashboard");
 
-    } catch (error) {
-      alert("Erreur de connexion");
+    } catch (err) {
+      setError("Erreur de connexion");
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   return (
@@ -49,7 +45,6 @@ export default function LoginPage() {
           <Link href="/" className="text-xl font-black text-blue-400">
             QuizArena
           </Link>
-
           <Link
             href="/register"
             className="rounded-xl border border-blue-400/30 px-4 py-2 text-sm font-semibold text-blue-400 hover:bg-blue-400 hover:text-black transition"
@@ -64,21 +59,27 @@ export default function LoginPage() {
           onSubmit={handleSubmit}
           className="w-full max-w-md space-y-5 rounded-2xl border border-blue-400/20 bg-zinc-950 p-6"
         >
-          <h1 className="text-2xl font-black text-blue-400">
-            Connexion
-          </h1>
+          <h1 className="text-2xl font-black text-blue-400">Connexion</h1>
+
+          {error && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+              {error}
+            </div>
+          )}
 
           <input
-            name="email"
             type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             placeholder="Email"
             required
             className="w-full rounded-xl bg-black border border-zinc-700 p-3 outline-none focus:border-blue-400"
           />
 
           <input
-            name="password"
             type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             placeholder="Mot de passe"
             required
             className="w-full rounded-xl bg-black border border-zinc-700 p-3 outline-none focus:border-blue-400"
@@ -93,10 +94,7 @@ export default function LoginPage() {
           </button>
 
           <div className="text-center text-sm">
-            <Link
-              href="/forgot-password"
-              className="text-blue-400 hover:underline"
-            >
+            <Link href="/forgot-password" className="text-blue-400 hover:underline">
               Mot de passe oublié ?
             </Link>
           </div>

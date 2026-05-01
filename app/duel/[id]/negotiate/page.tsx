@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { supabase } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabaseClient";
 
 type Theme = "drapeaux" | "marques" | "films";
 type Role = "a" | "b";

@@ -22,13 +22,17 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getSession();
+  // 🔥 IMPORTANT : hydrate la session correctement
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // (optionnel debug)
+  console.log("MIDDLEWARE USER:", user);
 
   return response;
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
