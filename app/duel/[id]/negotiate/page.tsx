@@ -74,15 +74,10 @@ export default function DuelNegotiatePage() {
       }
 
 
-      // ✅ AJOUTER À LA PLACE
       if (duelData.status === "pending") {
-        
-
-  // player_b n'a pas encore accepté, on le renvoie vers respond
-         router.push(`/duel/${duelId}/respond`);
-         
-         return;
-      }
+  router.push(`/duel/${duelId}/respond`);
+  return;
+}
 
       if (!["negotiating"].includes(duelData.status)) {
         router.push(`/duel/${duelId}/bet`);

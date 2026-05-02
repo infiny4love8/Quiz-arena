@@ -60,44 +60,37 @@ export default function DashboardPage() {
     return () => listener.subscription.unsubscribe();
   }, [router]);
 
-  // 🔥 LISTENER DUELS (LE FIX IMPORTANT)
+  // 🔄 POLLING DUELS (toutes les 3s — plus fiable que realtime)
   useEffect(() => {
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let interval: NodeJS.Timeout | null = null;
 
-    const setupListener = async () => {
+    const checkPendingDuels = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const myUserId = user.id;
+      console.log("🔍 Je cherche des duels pour:", user.id);
 
-      channel = supabase
-        .channel("incoming-duels")
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "duels",
-          },
-          (payload) => {
-            const duel = payload.new;
+      const { data: pendingDuels, error } = await supabase
+        .from("duels")
+        .select("id")
+        .eq("player_b", user.id)
+        .eq("status", "pending")
+        .limit(1);
 
-            // 🎯 Si je suis le joueur B → je reçois le défi
-            if (duel.player_b === myUserId && duel.status === "pending") {
-              console.log("🔥 Duel reçu :", duel.id);
+      console.log("📦 Résultat:", pendingDuels, "Erreur:", error);
 
-              // 🚀 Redirection automatique
-              router.push(`/duel/${duel.id}/respond`);
-            }
-          }
-        )
-        .subscribe();
+      if (pendingDuels && pendingDuels.length > 0) {
+        const duelId = pendingDuels[0].id;
+        router.push(`/duel/${duelId}/respond`);
+      }
     };
 
-    setupListener();
+    // Lance immédiatement + toutes les 3 secondes
+    checkPendingDuels();
+    interval = setInterval(checkPendingDuels, 3000);
 
     return () => {
-      if (channel) supabase.removeChannel(channel);
+      if (interval) clearInterval(interval);
     };
   }, [router]);
 
