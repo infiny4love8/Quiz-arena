@@ -53,7 +53,7 @@ export default function DuelPage() {
     {
       number: "05",
       icon: "🏆",
-      title: "Le meilleur gagne",
+      title: "Le meilleur gagne NNPP",
       desc: "Les scores sont comparés. En cas de pari, les coins sont transférés automatiquement.",
     },
   ];
