@@ -31,7 +31,7 @@ export default function DuelChallengePage() {
         return;
       }
 
-      // 🔥 recherche par nom
+      // 🔍 Recherche adversaire
       const { data: opponents, error: opponentError } = await supabase
         .from("users")
         .select("id, full_name, coins")
@@ -57,13 +57,14 @@ export default function DuelChallengePage() {
         return;
       }
 
+      // 🔥 FIX : ne bloque plus avec pending
       const { data: existingDuel } = await supabase
         .from("duels")
         .select("id")
         .or(
           `and(player_a.eq.${user.id},player_b.eq.${opponent.id}),and(player_a.eq.${opponent.id},player_b.eq.${user.id})`
         )
-        .in("status", ["pending", "negotiating", "playing"])
+        .in("status", ["negotiating", "playing"]) // ✅ FIX ICI
         .maybeSingle();
 
       if (existingDuel) {
@@ -72,6 +73,7 @@ export default function DuelChallengePage() {
         return;
       }
 
+      // 🆕 Création duel
       const { data: duel, error: duelError } = await supabase
         .from("duels")
         .insert({
@@ -91,6 +93,26 @@ export default function DuelChallengePage() {
       setOpponentName(opponent.full_name);
       setStep("waiting");
 
+      // ⏱️ AUTO CANCEL (60s)
+      setTimeout(async () => {
+        const { data } = await supabase
+          .from("duels")
+          .select("status")
+          .eq("id", duel.id)
+          .single();
+
+        if (data?.status === "pending") {
+          await supabase
+            .from("duels")
+            .update({ status: "cancelled" })
+            .eq("id", duel.id);
+
+          setError("Aucune réponse, défi expiré.");
+          setStep("form");
+        }
+      }, 60000);
+
+      // 🔴 Realtime écoute
       const channel = supabase
         .channel(`duel-${duel.id}`)
         .on(
@@ -147,6 +169,13 @@ export default function DuelChallengePage() {
         >
           {step === "sending" ? "Envoi..." : "Envoyer le défi"}
         </button>
+
+        {/* ✅ État attente */}
+        {step === "waiting" && (
+          <p className="mt-4 text-orange-400 text-sm text-center">
+            En attente de {opponentName}...
+          </p>
+        )}
       </div>
     </main>
   );

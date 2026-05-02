@@ -19,6 +19,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  // 🔐 LOAD USER
   useEffect(() => {
     async function loadUser() {
       setLoading(true);
@@ -59,6 +60,47 @@ export default function DashboardPage() {
     return () => listener.subscription.unsubscribe();
   }, [router]);
 
+  // 🔥 LISTENER DUELS (LE FIX IMPORTANT)
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const setupListener = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const myUserId = user.id;
+
+      channel = supabase
+        .channel("incoming-duels")
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "duels",
+          },
+          (payload) => {
+            const duel = payload.new;
+
+            // 🎯 Si je suis le joueur B → je reçois le défi
+            if (duel.player_b === myUserId && duel.status === "pending") {
+              console.log("🔥 Duel reçu :", duel.id);
+
+              // 🚀 Redirection automatique
+              router.push(`/duel/${duel.id}/negotiate`);
+            }
+          }
+        )
+        .subscribe();
+    };
+
+    setupListener();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [router]);
+
   if (loading || !userData) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-black text-white">
@@ -86,36 +128,28 @@ export default function DashboardPage() {
         </Link>
 
         <nav className="mt-10 space-y-2">
-          <Link href="/dashboard"
-            className="block rounded-xl bg-yellow-400 px-4 py-3 font-bold text-black">
+          <Link href="/dashboard" className="block rounded-xl bg-yellow-400 px-4 py-3 font-bold text-black">
             Dashboard
           </Link>
-          <Link href="/tournaments"
-            className="block px-4 py-3 text-zinc-400 hover:text-yellow-400">
+          <Link href="/tournaments" className="block px-4 py-3 text-zinc-400 hover:text-yellow-400">
             Tournois
           </Link>
-          <Link href="/duel"
-            className="block px-4 py-3 text-zinc-400 hover:text-yellow-400">
+          <Link href="/duel" className="block px-4 py-3 text-zinc-400 hover:text-yellow-400">
             Duel 1v1
           </Link>
-          <Link href="/training"
-            className="block px-4 py-3 text-zinc-400 hover:text-yellow-400">
+          <Link href="/training" className="block px-4 py-3 text-zinc-400 hover:text-yellow-400">
             Entraînement
           </Link>
-          <Link href="/tournamentsponsorise"
-            className="block px-4 py-3 text-zinc-400 hover:text-yellow-400">
+          <Link href="/tournamentsponsorise" className="block px-4 py-3 text-zinc-400 hover:text-yellow-400">
             Tournois Sponsorisé
           </Link>
-          <Link href="/withdraw"
-            className="block px-4 py-3 text-zinc-400 hover:text-yellow-400">
+          <Link href="/withdraw" className="block px-4 py-3 text-zinc-400 hover:text-yellow-400">
             Retrait
           </Link>
-          <Link href="/leaderboard"
-            className="block px-4 py-3 text-zinc-400 hover:text-yellow-400">
+          <Link href="/leaderboard" className="block px-4 py-3 text-zinc-400 hover:text-yellow-400">
             Classement
           </Link>
-          <Link href="/support"
-            className="block px-4 py-3 text-zinc-400 hover:text-yellow-400">
+          <Link href="/support" className="block px-4 py-3 text-zinc-400 hover:text-yellow-400">
             Support
           </Link>
         </nav>
