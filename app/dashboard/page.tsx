@@ -87,7 +87,7 @@ export default function DashboardPage() {
               console.log("🔥 Duel reçu :", duel.id);
 
               // 🚀 Redirection automatique
-              router.push(`/duel/${duel.id}/negotiate`);
+              router.push(`/duel/${duel.id}/respond`);
             }
           }
         )

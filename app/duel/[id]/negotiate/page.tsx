@@ -73,14 +73,15 @@ export default function DuelNegotiatePage() {
         return;
       }
 
-      // 🔥 auto accept
-      if (duelData.status === "pending") {
-        await supabase
-          .from("duels")
-          .update({ status: "negotiating" })
-          .eq("id", duelId);
 
-        duelData.status = "negotiating";
+      // ✅ AJOUTER À LA PLACE
+      if (duelData.status === "pending") {
+        
+
+  // player_b n'a pas encore accepté, on le renvoie vers respond
+         router.push(`/duel/${duelId}/respond`);
+         
+         return;
       }
 
       if (!["negotiating"].includes(duelData.status)) {
