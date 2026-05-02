@@ -7,7 +7,8 @@ import { supabase } from "@/lib/supabaseClient";
 type Theme = "drapeaux" | "marques" | "films";
 type Role = "a" | "b";
 
-const THEMES = [
+// ✅ FIX ICI
+const THEMES: { id: Theme; label: string; icon: string; desc: string }[] = [
   { id: "drapeaux", label: "Drapeaux", icon: "🌍", desc: "Reconnais les drapeaux du monde" },
   { id: "marques", label: "Marques", icon: "🏷️", desc: "Identifie les logos de marques" },
   { id: "films", label: "Films & Séries", icon: "🎬", desc: "Quiz cinéma et séries" },
@@ -72,7 +73,7 @@ export default function DuelNegotiatePage() {
         return;
       }
 
-      // 🔥 FIX CRITIQUE : accepter automatiquement le duel
+      // 🔥 auto accept
       if (duelData.status === "pending") {
         await supabase
           .from("duels")
@@ -109,7 +110,7 @@ export default function DuelNegotiatePage() {
 
       setLoading(false);
 
-      // 🔴 realtime
+      // realtime
       channelRef.current = supabase
         .channel(`negotiate-${duelId}`)
         .on(
