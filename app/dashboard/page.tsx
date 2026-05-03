@@ -43,6 +43,7 @@ export default function DashboardPage() {
       }
 
       setUserData(data);
+      console.log("👤 ID connecté:", session.user.id);
       setLoading(false);
     }
 
