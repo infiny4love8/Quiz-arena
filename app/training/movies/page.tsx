@@ -1,655 +1,493 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 
-const FRUITS = ["🍎","🍊","🍋","🍇","🍓","🍑","🍍","🥭","🍌","🫐"];
-const FRUIT_COLORS: Record<string, string> = {
-  "🍎": "red","🍊": "orange","🍋": "yellow","🍇": "purple",
-  "🍓": "red","🍑": "orange","🍍": "yellow","🥭": "orange",
-  "🍌": "yellow","🫐": "purple",
-};
-
-type GameMode = "classic" | "rush" | "color" | "survival";
-
-type FruitObj = {
-  id: number;
-  emoji: string;
-  isBomb: boolean;
+type GameState = "menu" | "playing" | "gameover";
+type Ring = {
   x: number;
   y: number;
-  vy: number;
+  radius: number;
+  rotation: number;
+  speed: number;
+  targetColor: number;
+  passed: boolean;
+};
+type Particle = {
+  x: number;
+  y: number;
   vx: number;
+  vy: number;
+  life: number;
+  color: string;
   size: number;
-  sliced: boolean;
-  missed: boolean;
-  opacity: number;
 };
 
-type SlashParticle = {
-  id: number;
-  x: number;
-  y: number;
-  emoji: string;
-  vx: number;
-  vy: number;
-  opacity: number;
-  scale: number;
-};
+const COLORS = ["#ff4d4d", "#ffd84d", "#4dff88", "#4da3ff"];
+const BG = "#080814";
 
-type ModeConfig = {
-  id: GameMode;
-  title: string;
-  desc: string;
-  icon: string;
-  duration: number;
-  targetScore?: number;
-  colorFilter?: string;
-  lives?: number;
-  // Nouveau : nombre max de fruits ratés avant game over (classic/color)
-  maxMissed?: number;
-};
-
-const MODES: ModeConfig[] = [
-  {
-    id: "classic",
-    title: "Classique",
-    desc: "60 secondes. Coupe le max de fruits. 5 ratés = game over !",
-    icon: "⚔️",
-    duration: 60,
-    maxMissed: 5,
-  },
-  {
-    id: "rush",
-    title: "Rush",
-    desc: "Atteins 50 points en 30 secondes.",
-    icon: "⚡",
-    duration: 30,
-    targetScore: 50, // 100 était irréaliste, 50 est atteignable
-  },
-  {
-    id: "color",
-    title: "Couleur",
-    desc: "Coupe uniquement les fruits rouges ! Autres = -5. 5 ratés = fin.",
-    icon: "🎨",
-    duration: 45,
-    colorFilter: "red",
-    maxMissed: 5,
-  },
-  {
-    id: "survival",
-    title: "Survie",
-    desc: "3 vies. Chaque bombe coupée ou fruit raté = -1 vie.",
-    icon: "❤️",
-    duration: 999,
-    lives: 3,
-  },
-];
-
-// Constantes de physique — on contrôle tout ici
-const PHYSICS = {
-  // Vitesse verticale initiale (négatif = monte). Valeur absolue max.
-  vyMin: 7,
-  vyMax: 10,
-  // Vitesse horizontale max (dérive gauche/droite)
-  vxMax: 2.5,
-  // Gravité appliquée chaque frame
-  gravity: 0.22,
-  // Vitesse max autorisée (plafond absolu pour éviter l'effet "trop rapide")
-  vyAbsMax: 13,
-  // Accélération progressive avec le temps : multiplicateur max
-  speedRampMax: 1.5,
-  // Intervalle de spawn initial (ms)
-  spawnInitial: 1300,
-  // Intervalle de spawn minimum (ms) — jamais en dessous
-  spawnMin: 500,
-  // Probabilité de bombe
-  bombChance: 0.22,
-};
-
-let fruitIdCounter = 0;
-let particleIdCounter = 0;
-
-function playSound(type: "slice" | "bomb" | "win" | "lose" | "combo") {
-  if (typeof window === "undefined") return;
-  try {
-    const AC = window.AudioContext || (window as any).webkitAudioContext;
-    const ctx = new AC();
-    if (type === "slice") {
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      o.type = "sine"; o.frequency.setValueAtTime(800, ctx.currentTime);
-      o.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.15);
-      g.gain.setValueAtTime(0.15, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
-      o.connect(g); g.connect(ctx.destination);
-      o.start(); o.stop(ctx.currentTime + 0.15);
-    } else if (type === "bomb") {
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      o.type = "sawtooth"; o.frequency.setValueAtTime(100, ctx.currentTime);
-      g.gain.setValueAtTime(0.3, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-      o.connect(g); g.connect(ctx.destination);
-      o.start(); o.stop(ctx.currentTime + 0.4);
-    } else if (type === "win") {
-      [523, 659, 784, 1047].forEach((freq, i) => {
-        const o = ctx.createOscillator(); const g = ctx.createGain();
-        o.type = "sine"; o.frequency.value = freq;
-        g.gain.setValueAtTime(0, ctx.currentTime + i * 0.12);
-        g.gain.linearRampToValueAtTime(0.2, ctx.currentTime + i * 0.12 + 0.05);
-        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.3);
-        o.connect(g); g.connect(ctx.destination);
-        o.start(ctx.currentTime + i * 0.12); o.stop(ctx.currentTime + i * 0.12 + 0.3);
-      });
-    } else if (type === "lose") {
-      [400, 300, 200].forEach((freq, i) => {
-        const o = ctx.createOscillator(); const g = ctx.createGain();
-        o.type = "sawtooth"; o.frequency.value = freq;
-        g.gain.setValueAtTime(0.2, ctx.currentTime + i * 0.2);
-        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.2 + 0.3);
-        o.connect(g); g.connect(ctx.destination);
-        o.start(ctx.currentTime + i * 0.2); o.stop(ctx.currentTime + i * 0.2 + 0.3);
-      });
-    } else if (type === "combo") {
-      [660, 880, 1100].forEach((freq, i) => {
-        const o = ctx.createOscillator(); const g = ctx.createGain();
-        o.type = "triangle"; o.frequency.value = freq;
-        g.gain.setValueAtTime(0.12, ctx.currentTime + i * 0.07);
-        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.07 + 0.2);
-        o.connect(g); g.connect(ctx.destination);
-        o.start(ctx.currentTime + i * 0.07); o.stop(ctx.currentTime + i * 0.07 + 0.2);
-      });
-    }
-    setTimeout(() => ctx.close(), 2000);
-  } catch {}
-}
-
-export default function FruitSlashGame() {
+export default function Game() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fruitsRef = useRef<FruitObj[]>([]);
-  const particlesRef = useRef<SlashParticle[]>([]);
-  const slashPathRef = useRef<{ x: number; y: number }[]>([]);
-  const isSlashingRef = useRef(false);
-  const animFrameRef = useRef<number>(0);
-  const lastSpawnRef = useRef(0);
-  const spawnIntervalRef = useRef(PHYSICS.spawnInitial);
-  const gameStartTimeRef = useRef(0);
-  const missedCountRef = useRef(0);
+  const animationRef = useRef<number | null>(null);
+  const audioRef = useRef<AudioContext | null>(null);
+  const inputRef = useRef({
+    pressing: false,
+    pointerId: null as number | null,
+  });
 
-  const [phase, setPhase] = useState<"menu" | "playing" | "result">("menu");
-  const [selectedMode, setSelectedMode] = useState<ModeConfig>(MODES[0]);
   const [score, setScore] = useState(0);
-  const [combo, setCombo] = useState(0);
-  const [lives, setLives] = useState(3);
-  const [timeLeft, setTimeLeft] = useState(60);
-  const [multiplier, setMultiplier] = useState(1);
-  const [missedCount, setMissedCount] = useState(0);
-  const [flashMsg, setFlashMsg] = useState<{ text: string; color: string } | null>(null);
-  const [result, setResult] = useState<{ won: boolean; score: number; mode: string } | null>(null);
+  const [best, setBest] = useState(0);
+  const [gameState, setGameState] = useState<GameState>("menu");
 
-  const scoreRef = useRef(0);
-  const comboRef = useRef(0);
-  const livesRef = useRef(3);
-  const multiplierRef = useRef(1);
-  const phaseRef = useRef<"menu" | "playing" | "result">("menu");
-  const modeRef = useRef<ModeConfig>(MODES[0]);
+  const resetAndStart = () => setGameState("playing");
 
-  const showFlash = useCallback((text: string, color: string) => {
-    setFlashMsg({ text, color });
-    setTimeout(() => setFlashMsg(null), 900);
-  }, []);
+  useEffect(() => {
+    if (gameState !== "playing") return;
 
-  const endGame = useCallback((won: boolean) => {
-    if (phaseRef.current !== "playing") return;
-    phaseRef.current = "result";
-    setPhase("result");
-    cancelAnimationFrame(animFrameRef.current);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("training_score_fruitslash", JSON.stringify({
-        score: `${scoreRef.current} pts`,
-        points: scoreRef.current,
-      }));
-    }
-    setResult({ won, score: scoreRef.current, mode: modeRef.current.title });
-    won ? playSound("win") : playSound("lose");
-  }, []);
-
-  const sliceFruit = useCallback((fruit: FruitObj) => {
-    if (fruit.sliced || fruit.isBomb) return;
-    fruit.sliced = true;
-    const mode = modeRef.current;
-    let pts = 5;
-
-    if (mode.id === "color" && mode.colorFilter) {
-      if (FRUIT_COLORS[fruit.emoji] !== mode.colorFilter) {
-        // Fruit de mauvaise couleur : pénalité réduite à -5 (était -10, trop punitif)
-        pts = -5;
-        playSound("bomb");
-        showFlash("-5", "#ef4444");
-        comboRef.current = 0; setCombo(0);
-        multiplierRef.current = 1; setMultiplier(1);
-      } else {
-        playSound("slice");
-        comboRef.current += 1; setCombo(comboRef.current);
-      }
-    } else {
-      playSound("slice");
-      comboRef.current += 1; setCombo(comboRef.current);
-    }
-
-    // Combo x2 toutes les 3 coupes
-    if (pts > 0 && comboRef.current > 0 && comboRef.current % 3 === 0) {
-      multiplierRef.current = 2; setMultiplier(2);
-      playSound("combo");
-      showFlash("x2 COMBO!", "#facc15");
-      setTimeout(() => { multiplierRef.current = 1; setMultiplier(1); }, 3000);
-    }
-
-    const finalPts = pts > 0 ? pts * multiplierRef.current : pts;
-    scoreRef.current = Math.max(0, scoreRef.current + finalPts); // score ne passe pas négatif
-    setScore(scoreRef.current);
-    if (pts > 0) showFlash(`+${finalPts}`, "#4ade80");
-
-    for (let i = 0; i < 5; i++) {
-      particlesRef.current.push({
-        id: particleIdCounter++,
-        x: fruit.x, y: fruit.y,
-        emoji: fruit.emoji,
-        vx: (Math.random() - 0.5) * 8,
-        vy: (Math.random() - 0.5) * 8 - 3,
-        opacity: 1, scale: 0.8,
-      });
-    }
-
-    // Rush : victoire si score atteint
-    if (mode.id === "rush" && mode.targetScore && scoreRef.current >= mode.targetScore) {
-      endGame(true);
-    }
-  }, [showFlash, endGame]);
-
-  const sliceBomb = useCallback((fruit: FruitObj) => {
-    if (fruit.sliced) return;
-    fruit.sliced = true;
-    playSound("bomb");
-    scoreRef.current = Math.max(0, scoreRef.current - 10);
-    setScore(scoreRef.current);
-    comboRef.current = 0; setCombo(0);
-    multiplierRef.current = 1; setMultiplier(1);
-    showFlash("BOMBE! -10", "#ef4444");
-
-    if (modeRef.current.id === "survival") {
-      livesRef.current -= 1; setLives(livesRef.current);
-      if (livesRef.current <= 0) endGame(false);
-    }
-
-    for (let i = 0; i < 8; i++) {
-      particlesRef.current.push({
-        id: particleIdCounter++,
-        x: fruit.x, y: fruit.y,
-        emoji: "💥",
-        vx: (Math.random() - 0.5) * 12,
-        vy: (Math.random() - 0.5) * 12 - 4,
-        opacity: 1, scale: 1.2,
-      });
-    }
-  }, [showFlash, endGame]);
-
-  const checkSlash = useCallback((path: { x: number; y: number }[]) => {
-    if (path.length < 2) return;
-    const last = path[path.length - 1];
-    const prev = path[path.length - 2];
-    fruitsRef.current.forEach(fruit => {
-      if (fruit.sliced || fruit.missed) return;
-      const dist = Math.hypot(last.x - fruit.x, last.y - fruit.y);
-      const prevDist = Math.hypot(prev.x - fruit.x, prev.y - fruit.y);
-      const radius = fruit.size / 2;
-      if (dist < radius || prevDist < radius) {
-        fruit.isBomb ? sliceBomb(fruit) : sliceFruit(fruit);
-      }
-    });
-  }, [sliceFruit, sliceBomb]);
-
-  const spawnFruit = useCallback((canvas: HTMLCanvasElement, elapsed: number) => {
-    const isBomb = Math.random() < PHYSICS.bombChance;
-    const emoji = isBomb ? "💣" : FRUITS[Math.floor(Math.random() * FRUITS.length)];
-    const size = 52 + Math.random() * 20;
-    const x = size + Math.random() * (canvas.width - size * 2);
-
-    // Rampe de vitesse progressive mais plafonnée
-    const speedMult = Math.min(1 + elapsed / 40, PHYSICS.speedRampMax);
-    const baseVy = PHYSICS.vyMin + Math.random() * (PHYSICS.vyMax - PHYSICS.vyMin);
-    // On applique le multiplicateur puis on plafonne
-    const vy = -Math.min(baseVy * speedMult, PHYSICS.vyAbsMax);
-    const vx = (Math.random() - 0.5) * 2 * PHYSICS.vxMax;
-
-    fruitsRef.current.push({
-      id: fruitIdCounter++,
-      emoji, isBomb, x,
-      y: canvas.height + size,
-      vy, vx, size,
-      sliced: false, missed: false, opacity: 1,
-    });
-  }, []);
-
-  const gameLoop = useCallback((timestamp: number) => {
-    if (phaseRef.current !== "playing") return;
     const canvas = canvasRef.current;
     if (!canvas) return;
+
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
 
-    const elapsed = (timestamp - gameStartTimeRef.current) / 1000;
-    const mode = modeRef.current;
-    const remaining = Math.max(0, mode.duration - elapsed);
-    setTimeLeft(Math.ceil(remaining));
+    const state = {
+      width: 0,
+      height: 0,
+      time: 0,
+      last: 0,
+      gravity: 1600,
+      lift: -850,
+      speedBase: 140,
+      speedBoost: 18,
+      scroll: 0,
+      shake: 0,
+      running: true,
+      ball: {
+        x: 0,
+        y: 0,
+        vy: 0,
+        r: 14,
+        colorIndex: 0,
+      },
+      rings: [] as Ring[],
+      particles: [] as Particle[],
+      stars: Array.from({ length: 70 }, () => ({
+        x: Math.random(),
+        y: Math.random(),
+        s: 0.3 + Math.random() * 1.8,
+        a: 0.2 + Math.random() * 0.8,
+      })),
+      tutorialTimer: 0,
+    };
 
-    // Fin de temps (sauf survival)
-    if (mode.id !== "survival" && remaining <= 0) {
-      if (mode.id === "rush") {
-        // Rush : gagné seulement si on a atteint le score cible
-        endGame(scoreRef.current >= (mode.targetScore || 50));
-      } else {
-        // Classic et Color : toujours gagné si le temps s'écoule sans game over
-        endGame(true);
+    const audioCtx =
+      audioRef.current ??
+      new (window.AudioContext || (window as any).webkitAudioContext)();
+    audioRef.current = audioCtx;
+
+    const resize = () => {
+      state.width = window.innerWidth;
+      state.height = window.innerHeight;
+      canvas.width = Math.floor(state.width * dpr);
+      canvas.height = Math.floor(state.height * dpr);
+      canvas.style.width = `${state.width}px`;
+      canvas.style.height = `${state.height}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      state.ball.x = state.width / 2;
+      state.ball.y = state.height * 0.72;
+    };
+
+    const playSound = (freq: number, duration = 0.08, vol = 0.08) => {
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.value = vol;
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    };
+
+    const spawnParticles = (x: number, y: number, color: string, count = 18) => {
+      for (let i = 0; i < count; i++) {
+        state.particles.push({
+          x,
+          y,
+          vx: (Math.random() - 0.5) * 360,
+          vy: (Math.random() - 0.5) * 360,
+          life: 1,
+          color,
+          size: 1.5 + Math.random() * 3,
+        });
       }
-      return;
-    }
+    };
 
-    // Spawn
-    if (timestamp - lastSpawnRef.current > spawnIntervalRef.current) {
-      spawnFruit(canvas, elapsed);
-      lastSpawnRef.current = timestamp;
-      // Intervalle décroît progressivement mais jamais sous spawnMin
-      spawnIntervalRef.current = Math.max(PHYSICS.spawnMin, PHYSICS.spawnInitial - elapsed * 8);
-    }
-
-    // Mise à jour et filtre des fruits
-    let newMisses = 0;
-    fruitsRef.current = fruitsRef.current.filter(f => {
-      if (f.sliced) {
-        f.opacity -= 0.08;
-        return f.opacity > 0;
-      }
-      f.y += f.vy;
-      f.x += f.vx;
-      f.vy += PHYSICS.gravity;
-      if (f.y > canvas.height + f.size) {
-        if (!f.isBomb) {
-          // Fruit raté (pas une bombe)
-          newMisses++;
-          if (mode.id === "survival") {
-            livesRef.current -= 1;
-            setLives(livesRef.current);
-            showFlash("Raté! -1❤️", "#f87171");
-            if (livesRef.current <= 0) { endGame(false); return false; }
-          }
-        }
-        f.missed = true;
-        return false;
-      }
-      return true;
-    });
-
-    // Comptage des ratés pour les modes avec maxMissed
-    if (newMisses > 0 && mode.maxMissed) {
-      missedCountRef.current += newMisses;
-      setMissedCount(missedCountRef.current);
-      if (missedCountRef.current >= mode.maxMissed) {
-        endGame(false);
-        return;
-      }
-    }
-
-    // Dessin des fruits
-    fruitsRef.current.forEach(fruit => {
-      ctx.save();
-      ctx.globalAlpha = fruit.sliced ? fruit.opacity : 1;
-      ctx.font = `${fruit.size}px serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(fruit.emoji, fruit.x, fruit.y);
-      ctx.restore();
-    });
-
-    // Dessin des particules
-    particlesRef.current = particlesRef.current.filter(p => p.opacity > 0.05);
-    particlesRef.current.forEach(p => {
-      p.x += p.vx; p.y += p.vy; p.vy += 0.3;
-      p.opacity -= 0.04; p.scale = Math.max(0.1, p.scale - 0.01);
-      ctx.save();
-      ctx.globalAlpha = p.opacity;
-      ctx.font = `${Math.max(8, 28 * p.scale)}px serif`;
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(p.emoji, p.x, p.y);
-      ctx.restore();
-    });
-
-    // Dessin du slash
-    if (isSlashingRef.current && slashPathRef.current.length > 1) {
-      const path = slashPathRef.current.slice(-14);
-      ctx.save();
-      ctx.strokeStyle = "rgba(255,255,255,0.9)";
-      ctx.lineWidth = 3;
-      ctx.lineCap = "round"; ctx.lineJoin = "round";
-      ctx.shadowColor = "rgba(255,200,80,0.7)"; ctx.shadowBlur = 12;
-      ctx.beginPath();
-      ctx.moveTo(path[0].x, path[0].y);
-      for (let i = 1; i < path.length; i++) ctx.lineTo(path[i].x, path[i].y);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    animFrameRef.current = requestAnimationFrame(gameLoop);
-  }, [spawnFruit, endGame, showFlash]);
-
-  const startGame = useCallback((mode: ModeConfig) => {
-    modeRef.current = mode;
-    setSelectedMode(mode);
-    fruitsRef.current = []; particlesRef.current = []; slashPathRef.current = [];
-    scoreRef.current = 0; comboRef.current = 0;
-    livesRef.current = mode.lives || 3;
-    multiplierRef.current = 1;
-    missedCountRef.current = 0;
-    fruitIdCounter = 0; particleIdCounter = 0;
-    setScore(0); setCombo(0); setLives(mode.lives || 3);
-    setMultiplier(1); setTimeLeft(mode.duration); setFlashMsg(null); setMissedCount(0);
-    phaseRef.current = "playing";
-    setPhase("playing");
-    const now = performance.now();
-    gameStartTimeRef.current = now;
-    lastSpawnRef.current = now;
-    spawnIntervalRef.current = PHYSICS.spawnInitial;
-    cancelAnimationFrame(animFrameRef.current);
-    animFrameRef.current = requestAnimationFrame(gameLoop);
-  }, [gameLoop]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || phase !== "playing") return;
-    const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; };
-    resize();
-    window.addEventListener("resize", resize);
-    const getPos = (e: MouseEvent | Touch) => {
-      const r = canvas.getBoundingClientRect();
+    const makeRing = (y: number): Ring => {
+      const color = Math.floor(Math.random() * COLORS.length);
       return {
-        x: (e.clientX - r.left) * (canvas.width / r.width),
-        y: (e.clientY - r.top) * (canvas.height / r.height),
+        x: state.width / 2,
+        y,
+        radius: 84 + Math.random() * 26,
+        rotation: Math.random() * Math.PI * 2,
+        speed: (Math.random() > 0.5 ? 1 : -1) * (0.35 + Math.random() * 0.22),
+        targetColor: color,
+        passed: false,
       };
     };
-    const onDown = (e: MouseEvent) => { isSlashingRef.current = true; slashPathRef.current = [getPos(e)]; };
-    const onMove = (e: MouseEvent) => { if (!isSlashingRef.current) return; slashPathRef.current.push(getPos(e)); checkSlash(slashPathRef.current); };
-    const onUp = () => { isSlashingRef.current = false; slashPathRef.current = []; };
-    const onTS = (e: TouchEvent) => { e.preventDefault(); isSlashingRef.current = true; slashPathRef.current = [getPos(e.touches[0])]; };
-    const onTM = (e: TouchEvent) => { e.preventDefault(); if (!isSlashingRef.current) return; slashPathRef.current.push(getPos(e.touches[0])); checkSlash(slashPathRef.current); };
-    const onTE = () => { isSlashingRef.current = false; slashPathRef.current = []; };
-    canvas.addEventListener("mousedown", onDown);
-    canvas.addEventListener("mousemove", onMove);
-    canvas.addEventListener("mouseup", onUp);
-    canvas.addEventListener("touchstart", onTS, { passive: false });
-    canvas.addEventListener("touchmove", onTM, { passive: false });
-    canvas.addEventListener("touchend", onTE);
-    return () => {
-      window.removeEventListener("resize", resize);
-      canvas.removeEventListener("mousedown", onDown);
-      canvas.removeEventListener("mousemove", onMove);
-      canvas.removeEventListener("mouseup", onUp);
-      canvas.removeEventListener("touchstart", onTS);
-      canvas.removeEventListener("touchmove", onTM);
-      canvas.removeEventListener("touchend", onTE);
+
+    const initRings = () => {
+      state.rings = [];
+      const gap = 180;
+      for (let i = 0; i < 8; i++) {
+        state.rings.push(makeRing(state.height - 220 - i * gap));
+      }
     };
-  }, [phase, checkSlash]);
 
-  useEffect(() => () => cancelAnimationFrame(animFrameRef.current), []);
+    const gameOver = () => {
+      state.running = false;
+      setBest((b) => Math.max(b, score));
+      setGameState("gameover");
+      playSound(120, 0.18, 0.09);
+      state.shake = 18;
+    };
 
-  // ── MENU ──────────────────────────────────────────────
-  if (phase === "menu") {
-    return (
-      <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-4 py-10 overflow-hidden">
-        <div className="fixed inset-0 pointer-events-none">
-          <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-orange-500/10 blur-3xl" />
-        </div>
-        <div className="relative z-10 text-center mb-10">
-          <p className="text-xs uppercase tracking-[0.4em] text-white/40 mb-3">Entraînement</p>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tight">
-            Fruit<span className="text-orange-400">Slash</span>
-          </h1>
-          <p className="mt-3 text-white/50 text-sm">Slash les fruits · Évite les bombes · Bats ton score</p>
-        </div>
-        <div className="relative z-10 grid gap-4 md:grid-cols-2 w-full max-w-2xl">
-          {MODES.map(mode => (
-            <button key={mode.id} onClick={() => startGame(mode)}
-              className="group rounded-2xl border border-white/10 bg-white/5 p-5 text-left transition hover:border-orange-400/50 hover:bg-orange-500/10">
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-3xl">{mode.icon}</span>
-                <div>
-                  <h3 className="font-black text-lg group-hover:text-orange-400 transition">{mode.title}</h3>
-                  <span className="text-xs text-white/40">
-                    {mode.id === "survival" ? "∞ temps · 3 vies" : `${mode.duration}s`}
-                  </span>
-                </div>
-              </div>
-              <p className="text-sm text-white/50">{mode.desc}</p>
-            </button>
-          ))}
-        </div>
-        <div className="relative z-10 mt-8 flex flex-wrap justify-center gap-6 text-sm text-white/30">
-          <span>🍎 Fruit = +5 pts</span>
-          <span>💣 Bombe = -10 pts</span>
-          <span>🔥 Combo x3 = ×2</span>
-        </div>
-      </main>
-    );
-  }
+    const handlePress = () => {
+      if (gameState !== "playing") return;
+      inputRef.current.pressing = true;
+      if (navigator.vibrate) navigator.vibrate(12);
+    };
 
-  // ── RESULT ────────────────────────────────────────────
-  if (phase === "result" && result) {
-    return (
-      <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-4">
-        <div className="w-full max-w-md rounded-[2rem] border border-white/10 bg-zinc-950 p-8 text-center shadow-2xl">
-          <div className="text-6xl mb-4">{result.won ? "🏆" : "💀"}</div>
-          <p className="text-white/40 text-sm uppercase tracking-widest mb-2">{result.mode}</p>
-          <h1 className="text-6xl font-black mb-2">{result.score}</h1>
-          <p className="text-white/50 mb-2">points</p>
-          <p className="text-lg font-bold mt-4 mb-8"
-            style={{ color: result.won ? "#4ade80" : "#f87171" }}>
-            {result.won ? "Bravo ! Tu as gagné 🎉" : "Dommage... Réessaie ! 💪"}
-          </p>
-          <div className="flex gap-3 justify-center">
-            <button onClick={() => startGame(modeRef.current)}
-              className="rounded-xl bg-orange-500 px-6 py-3 font-black text-black transition hover:bg-orange-400">
-              Rejouer
-            </button>
-            <button onClick={() => { phaseRef.current = "menu"; setPhase("menu"); }}
-              className="rounded-xl border border-white/20 px-6 py-3 font-bold text-white transition hover:border-orange-400 hover:text-orange-400">
-              Menu
-            </button>
-          </div>
-        </div>
-      </main>
-    );
-  }
+    const handleRelease = () => {
+      inputRef.current.pressing = false;
+    };
 
-  // ── GAME ──────────────────────────────────────────────
+    const handlePointerDown = (e: PointerEvent) => {
+      if (e.pointerType === "mouse" || e.pointerType === "touch" || e.pointerType === "pen") {
+        inputRef.current.pointerId = e.pointerId;
+        handlePress();
+      }
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+      if (inputRef.current.pointerId === e.pointerId) {
+        inputRef.current.pointerId = null;
+      }
+      handleRelease();
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === "Space" || e.code === "ArrowUp" || e.code === "Enter") {
+        e.preventDefault();
+        handlePress();
+      }
+      if (e.code === "KeyR" && gameState === "gameover") {
+        setScore(0);
+        setGameState("playing");
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === "Space" || e.code === "ArrowUp" || e.code === "Enter") {
+        handleRelease();
+      }
+    };
+
+    const update = (now: number) => {
+      if (!state.running) return;
+      const dt = Math.min(0.032, (now - state.last) / 1000 || 0.016);
+      state.last = now;
+      state.time += dt;
+
+      const w = state.width;
+      const h = state.height;
+      const ball = state.ball;
+
+      if (state.shake > 0) state.shake = Math.max(0, state.shake - 40 * dt);
+
+      if (inputRef.current.pressing) {
+        ball.vy += state.lift * dt;
+      } else {
+        ball.vy += state.gravity * dt;
+      }
+      ball.vy = Math.max(-900, Math.min(900, ball.vy));
+      ball.y += ball.vy * dt;
+
+      const targetScrollY = h * 0.62;
+      if (ball.y < targetScrollY) {
+        const delta = targetScrollY - ball.y;
+        ball.y = targetScrollY;
+        state.rings.forEach((r) => (r.y += delta));
+      }
+
+      const difficulty = 1 + score * 0.04;
+      const ringSpeed = state.speedBase + score * state.speedBoost;
+
+      state.rings.forEach((ring, index) => {
+        ring.y += ringSpeed * dt;
+        ring.rotation += ring.speed * dt * difficulty;
+
+        const dx = ball.x - ring.x;
+        const dy = ball.y - ring.y;
+        const dist = Math.hypot(dx, dy);
+
+        const passWindow = Math.abs(dist - ring.radius) < ball.r + 12;
+        if (passWindow && !ring.passed) {
+          const angle = (Math.atan2(dy, dx) - ring.rotation + Math.PI * 2) % (Math.PI * 2);
+          const sector = Math.floor(angle / (Math.PI / 2));
+
+          if (sector !== ball.colorIndex) {
+            gameOver();
+            return;
+          }
+
+          ring.passed = true;
+          setScore((s) => s + 1);
+          ball.colorIndex = ring.targetColor;
+          ball.vy = Math.min(ball.vy, -180);
+
+          playSound(560, 0.06, 0.06);
+          spawnParticles(ball.x, ball.y, COLORS[ball.colorIndex], 22);
+
+          const nextIndex = (ring.targetColor + 1 + Math.floor(Math.random() * 3)) % 4;
+          ring.targetColor = nextIndex;
+        }
+
+        if (ring.y - ring.radius > h + 120) {
+          const topY = Math.min(...state.rings.map((r) => r.y));
+          Object.assign(ring, makeRing(topY - 190 - Math.random() * 40));
+        }
+      });
+
+      if (ball.y - ball.r > h + 60) {
+        gameOver();
+        return;
+      }
+
+      if (ball.y + ball.r < -80) {
+        ball.y = -80;
+        ball.vy = 0;
+      }
+
+      state.particles = state.particles.filter((p) => p.life > 0);
+      state.particles.forEach((p) => {
+        p.life -= dt * 1.8;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vx *= 0.98;
+        p.vy *= 0.98;
+      });
+
+      draw();
+      animationRef.current = requestAnimationFrame(update);
+    };
+
+    const draw = () => {
+      const w = state.width;
+      const h = state.height;
+      const ball = state.ball;
+
+      ctx.fillStyle = BG;
+      ctx.fillRect(0, 0, w, h);
+
+      const grd = ctx.createRadialGradient(w / 2, h / 3, 40, w / 2, h / 3, Math.max(w, h));
+      grd.addColorStop(0, "rgba(78, 119, 255, 0.14)");
+      grd.addColorStop(1, "rgba(8, 8, 20, 0)");
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, w, h);
+
+      for (const s of state.stars) {
+        ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+        ctx.beginPath();
+        ctx.arc(s.x * w, s.y * h, s.s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      for (const ring of state.rings) {
+        for (let i = 0; i < 4; i++) {
+          const start = ring.rotation + (i * Math.PI) / 2;
+          const end = ring.rotation + ((i + 1) * Math.PI) / 2;
+          ctx.beginPath();
+          ctx.lineWidth = 14;
+          ctx.lineCap = "round";
+          ctx.shadowBlur = 18;
+          ctx.shadowColor = COLORS[i];
+          ctx.strokeStyle = COLORS[i];
+          ctx.arc(ring.x, ring.y, ring.radius, start, end);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+        }
+
+        const coreGlow = ctx.createRadialGradient(ring.x, ring.y, ring.radius - 20, ring.x, ring.y, ring.radius + 22);
+        coreGlow.addColorStop(0, "rgba(255,255,255,0)");
+        coreGlow.addColorStop(1, "rgba(255,255,255,0.08)");
+        ctx.fillStyle = coreGlow;
+        ctx.beginPath();
+        ctx.arc(ring.x, ring.y, ring.radius + 22, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      for (const p of state.particles) {
+        const alpha = Math.max(0, p.life / 1.8);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = alpha;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+
+      ctx.save();
+      if (state.shake > 0) {
+        ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
+      }
+
+      const ballGlow = ctx.createRadialGradient(ball.x, ball.y, 2, ball.x, ball.y, 42);
+      ballGlow.addColorStop(0, "rgba(255,255,255,0.9)");
+      ballGlow.addColorStop(1, COLORS[ball.colorIndex] + "00");
+
+      ctx.shadowBlur = 25;
+      ctx.shadowColor = COLORS[ball.colorIndex];
+      ctx.fillStyle = COLORS[ball.colorIndex];
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = ballGlow;
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.r + 18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.font = "600 22px system-ui, sans-serif";
+      ctx.fillText(`Score: ${score}`, 20, 34);
+
+      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      ctx.font = "500 14px system-ui, sans-serif";
+      ctx.fillText("Hold / tap to rise", 20, 56);
+
+      if (state.tutorialTimer < 4) {
+        ctx.textAlign = "center";
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        ctx.font = "700 28px system-ui, sans-serif";
+        ctx.fillText("Traverse le bon segment", w / 2, h * 0.18);
+        ctx.font = "500 16px system-ui, sans-serif";
+        ctx.fillStyle = "rgba(255,255,255,0.7)";
+        ctx.fillText("Maintiens pour monter, relâche pour descendre", w / 2, h * 0.18 + 28);
+        ctx.textAlign = "left";
+      }
+    };
+
+    const cleanup = () => {
+      state.running = false;
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      window.removeEventListener("resize", resize);
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+
+    resize();
+    initRings();
+
+    window.addEventListener("resize", resize);
+    window.addEventListener("pointerdown", handlePointerDown, { passive: true });
+    window.addEventListener("pointerup", handlePointerUp, { passive: true });
+    window.addEventListener("pointercancel", handlePointerUp, { passive: true });
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    setScore(0);
+    state.last = performance.now();
+    animationRef.current = requestAnimationFrame(update);
+
+    return cleanup;
+  }, [gameState, score]);
+
   return (
-    <main className="relative w-full h-screen bg-black overflow-hidden select-none">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(251,146,60,0.06),transparent_60%)]" />
+    <div style={{ position: "fixed", inset: 0, overflow: "hidden", background: BG }}>
+      <canvas
+        ref={canvasRef}
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "block",
+          touchAction: "none",
+          cursor: "pointer",
+        }}
+      />
 
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full cursor-crosshair touch-none" />
-
-      {/* HUD */}
-      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-5 py-4 pointer-events-none">
-        <div className="flex items-center gap-3">
-          <div className="rounded-2xl border border-white/10 bg-black/60 backdrop-blur-sm px-4 py-2">
-            <span className="text-2xl font-black text-white">{score}</span>
-            <span className="text-xs text-white/40 ml-1">pts</span>
-          </div>
-          {multiplier > 1 && (
-            <div className="rounded-2xl border border-yellow-400/40 bg-yellow-400/10 px-3 py-2 animate-pulse">
-              <span className="text-sm font-black text-yellow-300">x{multiplier}</span>
-            </div>
-          )}
-          {combo > 1 && (
-            <div className="rounded-2xl border border-orange-400/40 bg-orange-400/10 px-3 py-2">
-              <span className="text-sm font-black text-orange-300">🔥 {combo}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* Vies (survival) */}
-          {selectedMode.id === "survival" && (
-            <div className="flex gap-1">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <span key={i} className="text-lg" style={{ opacity: i < lives ? 1 : 0.2 }}>❤️</span>
-              ))}
-            </div>
-          )}
-          {/* Fruits ratés (classic / color) */}
-          {selectedMode.maxMissed && (
-            <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-3 py-2">
-              <span className="text-sm font-black text-red-300">
-                💨 {missedCount}/{selectedMode.maxMissed}
-              </span>
-            </div>
-          )}
-          {/* Timer */}
-          {selectedMode.id !== "survival" && (
-            <div className="rounded-2xl border border-white/10 bg-black/60 backdrop-blur-sm px-4 py-2">
-              <span className="text-2xl font-black" style={{ color: timeLeft <= 10 ? "#f87171" : "white" }}>
-                {timeLeft}s
-              </span>
-            </div>
-          )}
-          {/* Objectif Rush */}
-          {selectedMode.id === "rush" && selectedMode.targetScore && (
-            <div className="rounded-2xl border border-orange-400/30 bg-orange-500/10 px-3 py-2">
-              <span className="text-sm font-black text-orange-300">
-                {score}/{selectedMode.targetScore}
-              </span>
-            </div>
-          )}
-          {/* Indicateur mode couleur */}
-          {selectedMode.id === "color" && (
-            <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-3 py-2">
-              <span className="text-sm font-black text-red-300">🍎 Rouges only</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Flash message */}
-      {flashMsg && (
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none text-4xl font-black"
-          style={{ color: flashMsg.color, textShadow: `0 0 20px ${flashMsg.color}` }}>
-          {flashMsg.text}
+      {gameState === "menu" && (
+        <div style={overlayStyle}>
+          <h1 style={titleStyle}>Color Orbit</h1>
+          <p style={textStyle}>Maintiens ou tappe pour faire monter la balle et traverse les anneaux de la bonne couleur.</p>
+          <button style={buttonStyle} onClick={resetAndStart}>Start</button>
         </div>
       )}
 
-      <button
-        onClick={() => { phaseRef.current = "menu"; setPhase("menu"); cancelAnimationFrame(animFrameRef.current); }}
-        className="absolute bottom-5 right-5 z-10 rounded-xl border border-white/20 bg-black/60 px-4 py-2 text-sm font-bold text-white/60 backdrop-blur-sm transition hover:text-white hover:border-white/40">
-        Quitter
-      </button>
-    </main>
+      {gameState === "gameover" && (
+        <div style={overlayStyle}>
+          <h1 style={titleStyle}>Game Over</h1>
+          <p style={textStyle}>Score: {score}</p>
+          <p style={textStyle}>Best: {best}</p>
+          <button
+            style={buttonStyle}
+            onClick={() => {
+              setScore(0);
+              setGameState("playing");
+            }}
+          >
+            Restart
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
+
+const overlayStyle: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "radial-gradient(circle at center, rgba(15,15,30,0.55), rgba(0,0,0,0.85))",
+  color: "white",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+  alignItems: "center",
+  gap: "16px",
+  padding: "24px",
+  textAlign: "center",
+  backdropFilter: "blur(8px)",
+};
+
+const titleStyle: React.CSSProperties = {
+  fontSize: "clamp(40px, 8vw, 72px)",
+  margin: 0,
+  letterSpacing: "0.04em",
+};
+
+const textStyle: React.CSSProperties = {
+  margin: 0,
+  maxWidth: 520,
+  color: "rgba(255,255,255,0.82)",
+  lineHeight: 1.5,
+};
+
+const buttonStyle: React.CSSProperties = {
+  padding: "14px 28px",
+  borderRadius: 999,
+  border: "none",
+  background: "linear-gradient(135deg, #4da3ff, #7c4dff)",
+  color: "white",
+  fontWeight: 700,
+  fontSize: 18,
+  boxShadow: "0 10px 30px rgba(77,163,255,0.35)",
+};
