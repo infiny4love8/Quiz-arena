@@ -2,492 +2,322 @@
 
 import { useEffect, useRef, useState } from "react";
 
-type GameState = "menu" | "playing" | "gameover";
-type Ring = {
+type Ball = {
   x: number;
+  y: number;
+  vy: number;
+  radius: number;
+  colorIndex: number;
+};
+
+type Ring = {
   y: number;
   radius: number;
   rotation: number;
+  gapAngle: number;
+  colors: string[];
+};
+
+type GameState = {
+  ball: Ball;
+  rings: Ring[];
+  gravity: number;
+  jumpPower: number;
   speed: number;
-  targetColor: number;
-  passed: boolean;
-};
-type Particle = {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  life: number;
-  color: string;
-  size: number;
 };
 
-const COLORS = ["#ff4d4d", "#ffd84d", "#4dff88", "#4da3ff"];
-const BG = "#080814";
+const COLORS = ["#ff4d6d", "#4cc9f0", "#f9c74f", "#9b5de5"];
 
-export default function Game() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number | null>(null);
-  const audioRef = useRef<AudioContext | null>(null);
-  const inputRef = useRef({
-    pressing: false,
-    pointerId: null as number | null,
-  });
+function createInitialGame(): GameState {
+  return {
+    ball: { x: 180, y: 520, vy: 0, radius: 14, colorIndex: 0 },
+    rings: Array.from({ length: 6 }, (_, i) => ({
+      y: 620 - i * 120,
+      radius: 88,
+      rotation: Math.random() * Math.PI * 2,
+      gapAngle: Math.PI * 0.72,
+      colors: COLORS,
+    })),
+    gravity: 0.35,
+    jumpPower: -7.5,
+    speed: 2.35,
+  };
+}
+
+export default function Page() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const frameRef = useRef<number | null>(null);
+  const stateRef = useRef<GameState>(createInitialGame());
 
   const [score, setScore] = useState(0);
   const [best, setBest] = useState(0);
-  const [gameState, setGameState] = useState<GameState>("menu");
+  const [gameOver, setGameOver] = useState(false);
+  const [started, setStarted] = useState(false);
 
-  const resetAndStart = () => setGameState("playing");
+  const resetGame = () => {
+    stateRef.current = createInitialGame();
+    setScore(0);
+    setGameOver(false);
+    setStarted(true);
+  };
 
   useEffect(() => {
-    if (gameState !== "playing") return;
-
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const dpr = window.devicePixelRatio || 1;
+    const width = 420;
+    const height = 720;
 
-    const state = {
-      width: 0,
-      height: 0,
-      time: 0,
-      last: 0,
-      gravity: 1600,
-      lift: -850,
-      speedBase: 140,
-      speedBoost: 18,
-      scroll: 0,
-      shake: 0,
-      running: true,
-      ball: {
-        x: 0,
-        y: 0,
-        vy: 0,
-        r: 14,
-        colorIndex: 0,
-      },
-      rings: [] as Ring[],
-      particles: [] as Particle[],
-      stars: Array.from({ length: 70 }, () => ({
-        x: Math.random(),
-        y: Math.random(),
-        s: 0.3 + Math.random() * 1.8,
-        a: 0.2 + Math.random() * 0.8,
-      })),
-      tutorialTimer: 0,
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    ctx.scale(dpr, dpr);
+
+    const drawBackground = () => {
+      const gradient = ctx.createLinearGradient(0, 0, 0, height);
+      gradient.addColorStop(0, "#020617");
+      gradient.addColorStop(0.5, "#111827");
+      gradient.addColorStop(1, "#030712");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+
+      for (let i = 0; i < 24; i++) {
+        const x = (i * 53 + (Date.now() * 0.03)) % width;
+        const y = (i * 91 + (Date.now() * 0.02)) % height;
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(34, 211, 238, ${0.05 + (i % 4) * 0.02})`;
+        ctx.arc(x, y, 2 + (i % 3), 0, Math.PI * 2);
+        ctx.fill();
+      }
     };
 
-    const audioCtx =
-      audioRef.current ??
-      new (window.AudioContext || (window as any).webkitAudioContext)();
-    audioRef.current = audioCtx;
+    const loop = () => {
+      const { ball, rings, gravity, speed } = stateRef.current;
 
-    const resize = () => {
-      state.width = window.innerWidth;
-      state.height = window.innerHeight;
-      canvas.width = Math.floor(state.width * dpr);
-      canvas.height = Math.floor(state.height * dpr);
-      canvas.style.width = `${state.width}px`;
-      canvas.style.height = `${state.height}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      state.ball.x = state.width / 2;
-      state.ball.y = state.height * 0.72;
-    };
+      drawBackground();
 
-    const playSound = (freq: number, duration = 0.08, vol = 0.08) => {
-      if (audioCtx.state === "suspended") audioCtx.resume();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      gain.gain.value = vol;
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      gain.gain.setValueAtTime(vol, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
-      osc.start();
-      osc.stop(audioCtx.currentTime + duration);
-    };
+      ball.vy += gravity;
+      ball.y += ball.vy;
 
-    const spawnParticles = (x: number, y: number, color: string, count = 18) => {
-      for (let i = 0; i < count; i++) {
-        state.particles.push({
-          x,
-          y,
-          vx: (Math.random() - 0.5) * 360,
-          vy: (Math.random() - 0.5) * 360,
-          life: 1,
-          color,
-          size: 1.5 + Math.random() * 3,
+      rings.forEach((ring) => {
+        ring.y -= speed;
+        ring.rotation += 0.01;
+      });
+
+      if (rings.length && rings[0].y < -100) {
+        rings.shift();
+        const lastY = rings[rings.length - 1]?.y ?? 620;
+        rings.push({
+          y: lastY + 120,
+          radius: 88,
+          rotation: Math.random() * Math.PI * 2,
+          gapAngle: Math.PI * 0.72,
+          colors: COLORS,
+        });
+
+        setScore((s) => {
+          const next = s + 1;
+          setBest((b) => Math.max(b, next));
+          return next;
         });
       }
-    };
 
-    const makeRing = (y: number): Ring => {
-      const color = Math.floor(Math.random() * COLORS.length);
-      return {
-        x: state.width / 2,
-        y,
-        radius: 84 + Math.random() * 26,
-        rotation: Math.random() * Math.PI * 2,
-        speed: (Math.random() > 0.5 ? 1 : -1) * (0.35 + Math.random() * 0.22),
-        targetColor: color,
-        passed: false,
-      };
-    };
-
-    const initRings = () => {
-      state.rings = [];
-      const gap = 180;
-      for (let i = 0; i < 8; i++) {
-        state.rings.push(makeRing(state.height - 220 - i * gap));
-      }
-    };
-
-    const gameOver = () => {
-      state.running = false;
-      setBest((b) => Math.max(b, score));
-      setGameState("gameover");
-      playSound(120, 0.18, 0.09);
-      state.shake = 18;
-    };
-
-    const handlePress = () => {
-      if (gameState !== "playing") return;
-      inputRef.current.pressing = true;
-      if (navigator.vibrate) navigator.vibrate(12);
-    };
-
-    const handleRelease = () => {
-      inputRef.current.pressing = false;
-    };
-
-    const handlePointerDown = (e: PointerEvent) => {
-      if (e.pointerType === "mouse" || e.pointerType === "touch" || e.pointerType === "pen") {
-        inputRef.current.pointerId = e.pointerId;
-        handlePress();
-      }
-    };
-
-    const handlePointerUp = (e: PointerEvent) => {
-      if (inputRef.current.pointerId === e.pointerId) {
-        inputRef.current.pointerId = null;
-      }
-      handleRelease();
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === "Space" || e.code === "ArrowUp" || e.code === "Enter") {
-        e.preventDefault();
-        handlePress();
-      }
-      if (e.code === "KeyR" && gameState === "gameover") {
-        setScore(0);
-        setGameState("playing");
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === "Space" || e.code === "ArrowUp" || e.code === "Enter") {
-        handleRelease();
-      }
-    };
-
-    const update = (now: number) => {
-      if (!state.running) return;
-      const dt = Math.min(0.032, (now - state.last) / 1000 || 0.016);
-      state.last = now;
-      state.time += dt;
-
-      const w = state.width;
-      const h = state.height;
-      const ball = state.ball;
-
-      if (state.shake > 0) state.shake = Math.max(0, state.shake - 40 * dt);
-
-      if (inputRef.current.pressing) {
-        ball.vy += state.lift * dt;
-      } else {
-        ball.vy += state.gravity * dt;
-      }
-      ball.vy = Math.max(-900, Math.min(900, ball.vy));
-      ball.y += ball.vy * dt;
-
-      const targetScrollY = h * 0.62;
-      if (ball.y < targetScrollY) {
-        const delta = targetScrollY - ball.y;
-        ball.y = targetScrollY;
-        state.rings.forEach((r) => (r.y += delta));
-      }
-
-      const difficulty = 1 + score * 0.04;
-      const ringSpeed = state.speedBase + score * state.speedBoost;
-
-      state.rings.forEach((ring, index) => {
-        ring.y += ringSpeed * dt;
-        ring.rotation += ring.speed * dt * difficulty;
-
-        const dx = ball.x - ring.x;
-        const dy = ball.y - ring.y;
-        const dist = Math.hypot(dx, dy);
-
-        const passWindow = Math.abs(dist - ring.radius) < ball.r + 12;
-        if (passWindow && !ring.passed) {
-          const angle = (Math.atan2(dy, dx) - ring.rotation + Math.PI * 2) % (Math.PI * 2);
-          const sector = Math.floor(angle / (Math.PI / 2));
-
-          if (sector !== ball.colorIndex) {
-            gameOver();
-            return;
+      for (const ring of rings) {
+        if (ring.y > -120 && ring.y < height + 120) {
+          for (let i = 0; i < 4; i++) {
+            ctx.beginPath();
+            ctx.strokeStyle = ring.colors[i];
+            ctx.lineWidth = 16;
+            ctx.lineCap = "round";
+            const start = ring.rotation + i * (Math.PI / 2);
+            const end = start + Math.PI / 2 - 0.04;
+            ctx.arc(width / 2, ring.y, ring.radius, start, end);
+            ctx.stroke();
           }
 
-          ring.passed = true;
-          setScore((s) => s + 1);
-          ball.colorIndex = ring.targetColor;
-          ball.vy = Math.min(ball.vy, -180);
-
-          playSound(560, 0.06, 0.06);
-          spawnParticles(ball.x, ball.y, COLORS[ball.colorIndex], 22);
-
-          const nextIndex = (ring.targetColor + 1 + Math.floor(Math.random() * 3)) % 4;
-          ring.targetColor = nextIndex;
-        }
-
-        if (ring.y - ring.radius > h + 120) {
-          const topY = Math.min(...state.rings.map((r) => r.y));
-          Object.assign(ring, makeRing(topY - 190 - Math.random() * 40));
-        }
-      });
-
-      if (ball.y - ball.r > h + 60) {
-        gameOver();
-        return;
-      }
-
-      if (ball.y + ball.r < -80) {
-        ball.y = -80;
-        ball.vy = 0;
-      }
-
-      state.particles = state.particles.filter((p) => p.life > 0);
-      state.particles.forEach((p) => {
-        p.life -= dt * 1.8;
-        p.x += p.vx * dt;
-        p.y += p.vy * dt;
-        p.vx *= 0.98;
-        p.vy *= 0.98;
-      });
-
-      draw();
-      animationRef.current = requestAnimationFrame(update);
-    };
-
-    const draw = () => {
-      const w = state.width;
-      const h = state.height;
-      const ball = state.ball;
-
-      ctx.fillStyle = BG;
-      ctx.fillRect(0, 0, w, h);
-
-      const grd = ctx.createRadialGradient(w / 2, h / 3, 40, w / 2, h / 3, Math.max(w, h));
-      grd.addColorStop(0, "rgba(78, 119, 255, 0.14)");
-      grd.addColorStop(1, "rgba(8, 8, 20, 0)");
-      ctx.fillStyle = grd;
-      ctx.fillRect(0, 0, w, h);
-
-      for (const s of state.stars) {
-        ctx.fillStyle = `rgba(255,255,255,${s.a})`;
-        ctx.beginPath();
-        ctx.arc(s.x * w, s.y * h, s.s, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      for (const ring of state.rings) {
-        for (let i = 0; i < 4; i++) {
-          const start = ring.rotation + (i * Math.PI) / 2;
-          const end = ring.rotation + ((i + 1) * Math.PI) / 2;
           ctx.beginPath();
-          ctx.lineWidth = 14;
-          ctx.lineCap = "round";
-          ctx.shadowBlur = 18;
-          ctx.shadowColor = COLORS[i];
-          ctx.strokeStyle = COLORS[i];
-          ctx.arc(ring.x, ring.y, ring.radius, start, end);
+          ctx.strokeStyle = "rgba(255,255,255,0.08)";
+          ctx.lineWidth = 2;
+          ctx.arc(width / 2, ring.y, ring.radius + 10, 0, Math.PI * 2);
           ctx.stroke();
-          ctx.shadowBlur = 0;
+
+          const dy = ball.y - ring.y;
+          if (Math.abs(dy) < 18) {
+            const angle = Math.atan2(ball.y - ring.y, ball.x - width / 2);
+            const normalized = (angle - ring.rotation + Math.PI * 2) % (Math.PI * 2);
+            const inGap =
+              Math.abs(normalized - Math.PI) < ring.gapAngle / 2;
+
+            if (!inGap) {
+              const segment = Math.floor(normalized / (Math.PI / 2));
+              const ringColor = ring.colors[segment];
+              const ballColor = COLORS[ball.colorIndex];
+
+              if (ringColor !== ballColor) {
+                setGameOver(true);
+                setStarted(false);
+              }
+            }
+          }
         }
-
-        const coreGlow = ctx.createRadialGradient(ring.x, ring.y, ring.radius - 20, ring.x, ring.y, ring.radius + 22);
-        coreGlow.addColorStop(0, "rgba(255,255,255,0)");
-        coreGlow.addColorStop(1, "rgba(255,255,255,0.08)");
-        ctx.fillStyle = coreGlow;
-        ctx.beginPath();
-        ctx.arc(ring.x, ring.y, ring.radius + 22, 0, Math.PI * 2);
-        ctx.fill();
       }
 
-      for (const p of state.particles) {
-        const alpha = Math.max(0, p.life / 1.8);
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = alpha;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
+      if (ball.y > height + 40) {
+        setGameOver(true);
+        setStarted(false);
       }
+
+      const glow = ctx.createRadialGradient(
+        ball.x,
+        ball.y,
+        2,
+        ball.x,
+        ball.y,
+        38
+      );
+      glow.addColorStop(0, `${COLORS[ball.colorIndex]}ff`);
+      glow.addColorStop(1, `${COLORS[ball.colorIndex]}00`);
+      ctx.beginPath();
+      ctx.fillStyle = glow;
+      ctx.arc(ball.x, ball.y, 38, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.fillStyle = COLORS[ball.colorIndex];
+      ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      ctx.arc(ball.x - 4, ball.y - 4, 4, 0, Math.PI * 2);
+      ctx.fill();
 
       ctx.save();
-      if (state.shake > 0) {
-        ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
-      }
-
-      const ballGlow = ctx.createRadialGradient(ball.x, ball.y, 2, ball.x, ball.y, 42);
-      ballGlow.addColorStop(0, "rgba(255,255,255,0.9)");
-      ballGlow.addColorStop(1, COLORS[ball.colorIndex] + "00");
-
-      ctx.shadowBlur = 25;
-      ctx.shadowColor = COLORS[ball.colorIndex];
-      ctx.fillStyle = COLORS[ball.colorIndex];
-      ctx.beginPath();
-      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = ballGlow;
-      ctx.beginPath();
-      ctx.arc(ball.x, ball.y, ball.r + 18, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.shadowColor = "rgba(34,211,238,0.7)";
+      ctx.shadowBlur = 16;
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "700 30px system-ui, sans-serif";
+      ctx.fillText(String(score), 24, 48);
       ctx.restore();
 
-      ctx.fillStyle = "rgba(255,255,255,0.9)";
-      ctx.font = "600 22px system-ui, sans-serif";
-      ctx.fillText(`Score: ${score}`, 20, 34);
+      if (gameOver) {
+        ctx.fillStyle = "rgba(2,6,23,0.64)";
+        ctx.fillRect(0, 0, width, height);
 
-      ctx.fillStyle = "rgba(255,255,255,0.55)";
-      ctx.font = "500 14px system-ui, sans-serif";
-      ctx.fillText("Hold / tap to rise", 20, 56);
+        ctx.save();
+        ctx.shadowColor = "rgba(34,211,238,0.65)";
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "800 40px system-ui, sans-serif";
+        ctx.fillText("Game Over", 106, 320);
+        ctx.restore();
 
-      if (state.tutorialTimer < 4) {
-        ctx.textAlign = "center";
-        ctx.fillStyle = "rgba(255,255,255,0.9)";
-        ctx.font = "700 28px system-ui, sans-serif";
-        ctx.fillText("Traverse le bon segment", w / 2, h * 0.18);
-        ctx.font = "500 16px system-ui, sans-serif";
-        ctx.fillStyle = "rgba(255,255,255,0.7)";
-        ctx.fillText("Maintiens pour monter, relâche pour descendre", w / 2, h * 0.18 + 28);
-        ctx.textAlign = "left";
+        ctx.fillStyle = "#cbd5e1";
+        ctx.font = "500 18px system-ui, sans-serif";
+        ctx.fillText("Appuie sur Restart", 126, 356);
       }
+
+      frameRef.current = requestAnimationFrame(loop);
     };
 
-    const cleanup = () => {
-      state.running = false;
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-      window.removeEventListener("resize", resize);
-      window.removeEventListener("pointerdown", handlePointerDown);
-      window.removeEventListener("pointerup", handlePointerUp);
-      window.removeEventListener("pointercancel", handlePointerUp);
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
+    frameRef.current = requestAnimationFrame(loop);
+
+    return () => {
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
     };
+  }, [score, gameOver]);
 
-    resize();
-    initRings();
+  const jump = () => {
+    if (gameOver) return;
 
-    window.addEventListener("resize", resize);
-    window.addEventListener("pointerdown", handlePointerDown, { passive: true });
-    window.addEventListener("pointerup", handlePointerUp, { passive: true });
-    window.addEventListener("pointercancel", handlePointerUp, { passive: true });
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
+    if (!started) {
+      resetGame();
+      return;
+    }
 
-    setScore(0);
-    state.last = performance.now();
-    animationRef.current = requestAnimationFrame(update);
-
-    return cleanup;
-  }, [gameState, score]);
+    stateRef.current.ball.vy = stateRef.current.jumpPower;
+    stateRef.current.ball.colorIndex =
+      (stateRef.current.ball.colorIndex + 1) % COLORS.length;
+  };
 
   return (
-    <div style={{ position: "fixed", inset: 0, overflow: "hidden", background: BG }}>
-      <canvas
-        ref={canvasRef}
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "block",
-          touchAction: "none",
-          cursor: "pointer",
-        }}
-      />
+    <div className="min-h-screen overflow-hidden bg-[#020617] text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.15),_transparent_40%),radial-gradient(circle_at_bottom,_rgba(168,85,247,0.14),_transparent_45%)]" />
+      <div className="relative mx-auto flex min-h-screen max-w-6xl items-center justify-center px-4 py-10">
+        <div className="grid w-full gap-8 lg:grid-cols-[1fr_420px]">
+          <div className="space-y-5">
+            <div className="inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-xs uppercase tracking-[0.3em] text-cyan-200">
+              Arcade Reflex
+            </div>
 
-      {gameState === "menu" && (
-        <div style={overlayStyle}>
-          <h1 style={titleStyle}>Color Orbit</h1>
-          <p style={textStyle}>Maintiens ou tappe pour faire monter la balle et traverse les anneaux de la bonne couleur.</p>
-          <button style={buttonStyle} onClick={resetAndStart}>Start</button>
-        </div>
-      )}
+            <h1 className="max-w-2xl text-4xl font-black leading-tight md:text-6xl">
+              Color Switch
+              <span className="block bg-gradient-to-r from-cyan-300 via-fuchsia-400 to-yellow-300 bg-clip-text text-transparent">
+                Gaming vibe addictive
+              </span>
+            </h1>
 
-      {gameState === "gameover" && (
-        <div style={overlayStyle}>
-          <h1 style={titleStyle}>Game Over</h1>
-          <p style={textStyle}>Score: {score}</p>
-          <p style={textStyle}>Best: {best}</p>
-          <button
-            style={buttonStyle}
-            onClick={() => {
-              setScore(0);
-              setGameState("playing");
-            }}
-          >
-            Restart
-          </button>
+            <p className="max-w-xl text-sm leading-6 text-slate-300 md:text-base">
+              Une balle, des anneaux colorés, des réflexes rapides. Le score
+              monte à chaque niveau atteint, avec un rendu neon très visuel.
+            </p>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              {[
+                ["Score", String(score)],
+                ["Best", String(best)],
+                ["Mode", "Arcade"],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  className="rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur-xl"
+                >
+                  <div className="text-xs uppercase tracking-[0.25em] text-slate-400">
+                    {label}
+                  </div>
+                  <div className="mt-2 text-2xl font-bold text-white">{value}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={jump}
+                className="rounded-2xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950 shadow-[0_0_30px_rgba(34,211,238,0.35)] transition hover:scale-[1.02]"
+              >
+                Play / Jump
+              </button>
+              <button
+                onClick={resetGame}
+                className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 font-semibold text-white transition hover:bg-white/10"
+              >
+                Restart
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-400">
+              Astuce: clique sur le canvas ou sur Play / Jump.
+            </p>
+          </div>
+
+          <div className="relative">
+            <div className="absolute -inset-4 rounded-[2rem] bg-cyan-400/10 blur-3xl" />
+            <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 p-3 shadow-2xl backdrop-blur-xl">
+              <canvas
+                ref={canvasRef}
+                className="block w-full rounded-[1.5rem] bg-black"
+                onPointerDown={jump}
+              />
+              <div className="pointer-events-none absolute inset-0 rounded-[2rem] ring-1 ring-inset ring-white/10" />
+            </div>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
-
-const overlayStyle: React.CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "radial-gradient(circle at center, rgba(15,15,30,0.55), rgba(0,0,0,0.85))",
-  color: "white",
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "center",
-  alignItems: "center",
-  gap: "16px",
-  padding: "24px",
-  textAlign: "center",
-  backdropFilter: "blur(8px)",
-};
-
-const titleStyle: React.CSSProperties = {
-  fontSize: "clamp(40px, 8vw, 72px)",
-  margin: 0,
-  letterSpacing: "0.04em",
-};
-
-const textStyle: React.CSSProperties = {
-  margin: 0,
-  maxWidth: 520,
-  color: "rgba(255,255,255,0.82)",
-  lineHeight: 1.5,
-};
-
-const buttonStyle: React.CSSProperties = {
-  padding: "14px 28px",
-  borderRadius: 999,
-  border: "none",
-  background: "linear-gradient(135deg, #4da3ff, #7c4dff)",
-  color: "white",
-  fontWeight: 700,
-  fontSize: 18,
-  boxShadow: "0 10px 30px rgba(77,163,255,0.35)",
-};
