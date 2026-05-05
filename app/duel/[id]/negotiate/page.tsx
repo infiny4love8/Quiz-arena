@@ -130,8 +130,15 @@ export default function DuelNegotiatePage() {
 
       const expiresAt = duelData.theme_expires_at;
       if (expiresAt) {
+        // Thème déjà proposé → timer basé sur l'expiration réelle
         setTimeLeft(calcTimeLeft(expiresAt));
         startTimer(expiresAt);
+      } else {
+        // Pas encore de proposition → on démarre un timer local de 90s
+        // qui sera remplacé dès qu'un thème est proposé
+        const localExpiry = new Date(Date.now() + 90 * 1000).toISOString();
+        startTimer(localExpiry);
+        setTimeLeft(90);
       }
 
       setLoading(false);
