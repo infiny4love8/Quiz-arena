@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<title>Dames 8×8 – Classique (sons + animations fluides)</title>
+<style>
+  :root{
+    --light:#F0D9B5;      /* beige clair */
+    --dark:#8B5A2B;       /* brun bois */
+    --panel:#2c2c2e;
+    --panel-dark:#1c1c1e;
+    --accent:#00d1ff;     /* sélection */
+    --good:#2ecc71;       /* déplacement */
+    --warn:#ffb020;       /* capture */
+    --bg:#0b0b0c;
+  }
+
+  html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Roboto,Segoe UI,Arial,sans-serif}
+  .wrap{min-height:100svh;display:flex;flex-direction:column;align-items:center;justify-content:space-between}
+  header{width:100%;padding:10px 14px;text-align:center;background:linear-gradient(180deg,rgba(255,255,255,.06),transparent);font-weight:700;letter-spacing:.3px}
+
+  .board-wrap{width:min(94vw,560px);aspect-ratio:1/1;margin:8px auto 12px;position:relative;touch-action:manipulation}
+  canvas#board{width:100%;height:100%;display:block;border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.35);background:var(--light)}
+
+  .hud{width:100%;background:linear-gradient(180deg,var(--panel) 0%,var(--panel-dark) 80%);border-top:1px solid #0007}
+  .hud-inner{max-width:720px;margin:0 auto;padding:12px;display:grid;grid-template-columns:1fr;gap:10px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .pill{background:#ffffff10;border:1px solid #ffffff1a;padding:8px 10px;border-radius:12px;display:flex;align-items:center;gap:10px}
+  .seg{display:inline-flex;border-radius:12px;overflow:hidden;border:1px solid #ffffff1a}
+  .seg label{padding:8px 12px;cursor:pointer;background:#ffffff10;user-select:none}
+  .seg input{display:none}
+  .seg input:checked+span{background:#ffffff22;font-weight:700;outline:1px solid #ffffff30}
+  .btn{appearance:none;border:none;border-radius:12px;padding:10px 14px;font-weight:600;cursor:pointer;color:#fff;background:linear-gradient(180deg,#3a3a3d,#222226);box-shadow:0 2px 0 #0009 inset,0 8px 20px rgba(0,0,0,.3)}
+  .status{font-size:.95rem;opacity:.9}
+  .legend{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:.9rem;opacity:.9}
+  .dot{width:14px;height:14px;border-radius:50%;display:inline-block}
+  .dot.pick{background:var(--accent)} .dot.good{background:var(--good)} .dot.warn{background:var(--warn)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>Jeu de Dames — 8×8 — IA <span id="levelName">Normal</span></header>
+
+  <div class="board-wrap">
+    <canvas id="board" width="1000" height="1000" aria-label="Damier 8 par 8"></canvas>
+  </div>
+
+  <section class="hud">
+    <div class="hud-inner">
+      <div class="row">
+        <div class="pill status" id="status">À toi de jouer (Blancs en bas). Les prises sont obligatoires.</div>
+        <div class="legend">
+          <span class="dot pick"></span> sélection •
+          <span class="dot good"></span> déplacement •
+          <span class="dot warn"></span> capture
+        </div>
+      </div>
+      <div class="row">
+        <div class="pill">
+          <strong style="margin-right:8px;">Niveau</strong>
+          <div class="seg">
+            <label><input type="radio" name="lvl" value="normal" checked><span>Normal</span></label>
+            <label><input type="radio" name="lvl" value="hard"><span>Difficile</span></label>
+          </div>
+        </div>
+        <button class="btn" id="mute">🔊 Son : ON</button>
+        <button class="btn" id="new">Nouvelle partie</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ================================
+   Dames 8×8 – Sons + Animations fluides
+   - Sons: move, capture, crown, win, lose (WebAudio, aucun fichier)
+   - Déplacements animés (humain & IA), glisse fluide, sans jitter
+   - Capture “propre” : fade des pièces mangées au bon moment
+   - Règles: prises obligatoires, plus longue rafle, dames portées longues
+   - IA: Minimax + alpha-beta (profondeur selon niveau)
+================================== */
+
+const LIGHT = getCss('--light'), DARK = getCss('--dark');
+const HL_PICK = getCss('--accent'), HL_MOVE = getCss('--good'), HL_CAPT = getCss('--warn');
+
+const S = 8; // taille du plateau
+const EMPTY=0, W=1, B=2, WK=3, BK=4;
+
+/* ---- Durées & easing ---- */
+const ANIM_MS_MOVE = 380;
+const ANIM_MS_CAPTURE = 460;
+const AI_THINK_DELAY = 200;  // micro délai avant l'anim IA
+const ease = t => t<.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2;
+
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d', {alpha:false});
+let sizePx = canvas.width;
+let square = sizePx / S;
+
+let state = initialState();
+let turn = W;                // blancs commencent (joueur humain)
+let selected = null;
+let legalMap = new Map();
+let mustCapture = false;
+
+let level = 'normal';
+const statusEl = document.getElementById('status');
+const levelNameEl = document.getElementById('levelName');
+const muteBtn = document.getElementById('mute');
+
+/* ---------- AUDIO (Web Audio API) ---------- */
+const AudioFX = (()=> {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  const ac = AC ? new AC() : null;
+  let enabled = true;
+
+  function now(){ return ac.currentTime; }
+  async function resume(){ if(ac && ac.state==='suspended') await ac.resume(); }
+  function setEnabled(v){ enabled = v; }
+  function isEnabled(){ return enabled; }
+
+  function env(duration, attack=0.008, decay=0.12, sustain=0.0001){
+    const g = ac.createGain();
+    const t0 = now();
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(1, t0+attack);
+    g.gain.exponentialRampToValueAtTime(Math.max(sustain,1e-4), t0+Math.max(attack+decay, 0.03));
+    return g;
+  }
+  function tone(freq=440, duration=0.12, type='sine', vol=0.35){
+    if(!ac || !enabled) return;
+    const osc = ac.createOscillator();
+    const g = ac.createGain(); g.gain.value = vol;
+    const eg = env(duration);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now());
+    osc.connect(eg).connect(g).connect(ac.destination);
+    osc.start(); osc.stop(now()+duration);
+  }
+  function noise(duration=0.18, vol=0.28){
+    if(!ac || !enabled) return;
+    const buffer = ac.createBuffer(1, Math.floor(ac.sampleRate*duration), ac.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i=0;i<data.length;i++){ data[i]=(Math.random()*2-1)*0.6; }
+    const src = ac.createBufferSource(); src.buffer = buffer;
+    const g = ac.createGain(); g.gain.value = vol;
+    const eg = env(duration, 0.002, duration-0.02);
+    src.connect(eg).connect(g).connect(ac.destination);
+    src.start();
+  }
+
+  return {
+    async resume(){ await resume(); },
+    setEnabled, isEnabled,
+    move(){ tone(520, .08, 'triangle', .28); setTimeout(()=>tone(740,.08,'triangle',.22), 50); },
+    capture(){ tone(180,.1,'sawtooth',.32); setTimeout(()=>noise(.20,.30), 10); },
+    crown(){ tone(660,.1,'sine',.28); setTimeout(()=>tone(990,.12,'sine',.26),90); },
+    win(){ [523,659,784,988,1047].forEach((f,i)=>setTimeout(()=>tone(f,0.12,'sine',0.34), i*120)); },
+    lose(){ [784,659,523,440].forEach((f,i)=>setTimeout(()=>tone(f,0.18,'sine',0.30), i*140)); },
+  };
+})();
+
+muteBtn.addEventListener('click', async ()=>{
+  await AudioFX.resume();
+  AudioFX.setEnabled(!AudioFX.isEnabled());
+  muteBtn.textContent = AudioFX.isEnabled() ? '🔊 Son : ON' : '🔇 Son : OFF';
+});
+
+function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+
+function initialState(){
+  const b = Array.from({length:S}, _=>Array(S).fill(EMPTY));
+  for(let r=0;r<S;r++){
+    for(let c=0;c<S;c++){
+      const dark = (r+c)%2===1;
+      if(!dark) continue;
+      if(r<3) b[r][c]=B;
+      else if(r>4) b[r][c]=W;
+    }
+  }
+  return b;
+}
+
+function cloneBoard(b){return b.map(row=>row.slice());}
+function inside(r,c){return r>=0 && r<S && c>=0 && c<S;}
+function isWhite(p){return p===W||p===WK;}
+function isBlack(p){return p===B||p===BK;}
+function isKing(p){return p===WK||p===BK;}
+function keyRC(r,c){return r+','+c;}
+function opposite(s){return s===W?B:W;}
+
+/* ---------- Rendu & Animations ---------- */
+
+let anim = null; // {from,to,piece,t0,dur,capturing,crosses:[],t,onDone,mv}
+let dying = [];  // [{r,c,piece,t0,dur}]
+
+function draw(){
+  // damier
+  for(let r=0;r<S;r++){
+    for(let c=0;c<S;c++){
+      ctx.fillStyle = ((r+c)%2===0)? LIGHT : DARK;
+      ctx.fillRect(c*square, r*square, square, square);
+    }
+  }
+
+  // highlights
+  if(selected){
+    const key = keyRC(selected.r, selected.c);
+    const moves = legalMap.get(key)||[];
+    fillSquare(selected.r, selected.c, HL_PICK, .22);
+    for(const mv of moves){
+      const col = mv.captures.length? HL_CAPT : HL_MOVE;
+      drawTarget(mv.to.r, mv.to.c, col);
+    }
+  }
+
+  // pièces du board, en tenant compte des fades & de l’anim
+  for(let r=0;r<S;r++){
+    for(let c=0;c<S;c++){
+      const p = state[r][c];
+      if(p===EMPTY) continue;
+
+      // si cette case est en fade (capturée), on la dessine plus bas
+      const isD = dying.some(d=> d.r===r && d.c===c);
+      if(isD) continue;
+
+      // si on anime cette pièce depuis sa source, on masque la source
+      if(anim && anim.from.r===r && anim.from.c===c) continue;
+
+      drawPiece(r,c,p);
+    }
+  }
+
+  // pièces capturées en fade-out
+  const nowT = performance.now();
+  dying = dying.filter(d=> nowT - d.t0 < d.dur);
+  for(const d of dying){
+    const alpha = 1 - (nowT - d.t0)/d.dur;
+    drawPiece(d.r, d.c, d.piece, Math.max(0,alpha));
+  }
+
+  // pièce animée par-dessus
+  if(anim){
+    const k = ease(anim.t ?? 0);
+    const x0 = anim.from.c*square + square/2;
+    const y0 = anim.from.r*square + square/2;
+    const x1 = anim.to.c*square + square/2;
+    const y1 = anim.to.r*square + square/2;
+    const x = x0 + (x1-x0)*k;
+    const y = y0 + (y1-y0)*k;
+    drawPieceAt(x,y, anim.piece);
+  }
+}
+
+function fillSquare(r,c,color,a=.18){
+  ctx.save(); ctx.globalAlpha=a; ctx.fillStyle=color;
+  ctx.fillRect(c*square, r*square, square, square); ctx.restore();
+}
+function drawTarget(r,c,color){
+  const x=c*square+square/2, y=r*square+square/2;
+  ctx.save();
+  ctx.strokeStyle=color; ctx.lineWidth=Math.max(2, square*0.06);
+  ctx.beginPath(); ctx.arc(x,y, square*0.28, 0, Math.PI*2); ctx.stroke();
+  ctx.restore();
+}
+
+function drawPiece(r,c,p,alpha=1){
+  const x=c*square+square/2, y=r*square+square/2;
+  drawPieceAt(x,y,p,alpha);
+}
+function drawPieceAt(x,y,p,alpha=1){
+  const isW=isWhite(p), king=isKing(p);
+  ctx.save(); ctx.globalAlpha=alpha;
+  // ombre
+  ctx.beginPath(); ctx.arc(x, y+1, square*0.34, 0, Math.PI*2);
+  ctx.fillStyle='rgba(0,0,0,.25)'; ctx.fill();
+  // corps
+  const g=ctx.createLinearGradient(x, y-square*0.32, x, y+square*0.32);
+  if(isW){ g.addColorStop(0, '#f7f7f7'); g.addColorStop(1, '#cfcfcf'); }
+  else   { g.addColorStop(0, '#2d2d30'); g.addColorStop(1, '#101013'); }
+  ctx.beginPath(); ctx.arc(x,y, square*0.34, 0, Math.PI*2);
+  ctx.fillStyle=g; ctx.fill();
+  ctx.lineWidth=Math.max(2, square*0.05);
+  ctx.strokeStyle=isW?'#9a9a9a':'#111'; ctx.stroke();
+  // anneau
+  ctx.beginPath(); ctx.arc(x,y, square*0.25, 0, Math.PI*2);
+  ctx.strokeStyle=isW?'#ffffffaa':'#ffffff33'; ctx.lineWidth=Math.max(2, square*0.03); ctx.stroke();
+  // couronne
+  if(king){
+    ctx.fillStyle=isW?'#333':'#ddd';
+    ctx.font=`${Math.floor(square*0.28)}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('♛', x, y);
+  }
+  ctx.restore();
+}
+
+/* ---------- Génération des coups (captures prioritaires & plus longue rafle) ---------- */
+function refreshLegals(){
+  legalMap.clear();
+  const all = generateAllMoves(state, turn);
+  const maxCap = Math.max(0, ...all.map(m=>m.captures.length));
+  const filtered = maxCap>0 ? all.filter(m=>m.captures.length===maxCap) : all;
+  mustCapture = maxCap>0;
+  for(const m of filtered){
+    const k=keyRC(m.from.r, m.from.c);
+    if(!legalMap.has(k)) legalMap.set(k,[]);
+    legalMap.get(k).push(m);
+  }
+}
+
+function moveObj(fr,fc,tr,tc,captures,becameKing=false){return{from:{r:fr,c:fc},to:{r:tr,c:tc},captures:[...captures],becameKing};}
+
+function generateAllMoves(board, side){
+  const res=[];
+  let maxCap = 0;
+  // d'abord les captures
+  for(let r=0;r<S;r++)for(let c=0;c<S;c++){
+    const p=board[r][c]; if(p===EMPTY) continue;
+    if(side===W && !isWhite(p)) continue; if(side===B && !isBlack(p)) continue;
+    const caps = generateCapturesForPiece(board,r,c);
+    for(const mv of caps){res.push(mv); if(mv.captures.length>maxCap) maxCap=mv.captures.length;}
+  }
+  if(maxCap>0) return res.filter(m=>m.captures.length===maxCap);
+  // sinon coups calmes
+  for(let r=0;r<S;r++)for(let c=0;c<S;c++){
+    const p=board[r][c]; if(p===EMPTY) continue;
+    if(side===W && !isWhite(p)) continue; if(side===B && !isBlack(p)) continue;
+    res.push(...generateQuietMovesForPiece(board,r,c));
+  }
+  return res;
+}
+
+function generateQuietMovesForPiece(board,r,c){
+  const p=board[r][c], res=[];
+  if(isKing(p)){
+    const dirs=[[1,1],[1,-1],[-1,1],[-1,-1]];
+    for(const [dr,dc] of dirs){
+      let rr=r+dr, cc=c+dc;
+      while(inside(rr,cc) && board[rr][cc]===EMPTY){
+        res.push(moveObj(r,c,rr,cc,[]));
+        rr+=dr; cc+=dc;
+      }
+    }
+  }else{
+    const dir=isWhite(p)?-1:1; // blancs montent
+    for(const [dr,dc] of [[dir,1],[dir,-1]]){
+      const rr=r+dr, cc=c+dc;
+      if(inside(rr,cc) && board[rr][cc]===EMPTY) res.push(moveObj(r,c,rr,cc,[]));
+    }
+  }
+  return res;
+}
+
+function generateCapturesForPiece(board,r,c){
+  const p=board[r][c], isW=isWhite(p), enemy=isW?(x=>isBlack(x)):(x=>isWhite(x));
+  const res=[];
+  if(isKing(p)){
+    const dirs=[[1,1],[1,-1],[-1,1],[-1,-1]];
+    for(const [dr,dc] of dirs){
+      let rr=r+dr, cc=c+dc;
+      while(inside(rr,cc) && board[rr][cc]===EMPTY){ rr+=dr; cc+=dc; }
+      if(inside(rr,cc) && enemy(board[rr][cc])){
+        const er=rr, ec=cc; rr+=dr; cc+=dc;
+        while(inside(rr,cc) && board[rr][cc]===EMPTY){
+          const after=cloneBoard(board);
+          after[r][c]=EMPTY; after[er][ec]=EMPTY; after[rr][cc]=isW?WK:BK;
+          const cont = generateFurtherCaptures(after, rr, cc, true, isW);
+          if(cont.length===0) res.push(moveObj(r,c,rr,cc,[{r:er,c:ec}]));
+          else for(const m of cont) res.push(moveObj(r,c,m.to.r,m.to.c,[{r:er,c:ec},...m.captures]));
+          rr+=dr; cc+=dc;
+        }
+      }
+    }
+  }else{
+    const dirs=[[1,1],[1,-1],[-1,1],[-1,-1]];
+    for(const [dr,dc] of dirs){
+      const mr=r+dr, mc=c+dc, lr=r+2*dr, lc=c+2*dc;
+      if(inside(lr,lc) && inside(mr,mc) && enemy(board[mr][mc]) && board[lr][lc]===EMPTY){
+        const after=cloneBoard(board);
+        after[r][c]=EMPTY; after[mr][mc]=EMPTY;
+        let newP=board[r][c], became=false, endR=lr, endC=lc;
+        if(isW && endR===0){ newP=WK; became=true; }
+        if(!isW && endR===S-1){ newP=BK; became=true; }
+        after[endR][endC]=newP;
+        const cont=generateFurtherCaptures(after,endR,endC,became,isW);
+        if(cont.length===0) res.push(moveObj(r,c,endR,endC,[{r:mr,c:mc}],became));
+        else for(const m of cont) res.push(moveObj(r,c,m.to.r,m.to.c,[{r:mr,c:mc},...m.captures], became||m.becameKing));
+      }
+    }
+  }
+  const maxLen = res.reduce((m,a)=>Math.max(m,a.captures.length),0);
+  return res.filter(a=>a.captures.length===maxLen);
+}
+
+function generateFurtherCaptures(board,r,c,becameKing,isW){
+  const p=board[r][c], enemy=isW?(x=>isBlack(x)):(x=>isWhite(x));
+  const res=[];
+  if(isKing(p)){
+    const dirs=[[1,1],[1,-1],[-1,1],[-1,-1]];
+    for(const [dr,dc] of dirs){
+      let rr=r+dr, cc=c+dc;
+      while(inside(rr,cc) && board[rr][cc]===EMPTY){ rr+=dr; cc+=dc; }
+      if(inside(rr,cc) && enemy(board[rr][cc])){
+        const er=rr, ec=cc; rr+=dr; cc+=dc;
+        while(inside(rr,cc) && board[rr][cc]===EMPTY){
+          const after=cloneBoard(board);
+          after[r][c]=EMPTY; after[er][ec]=EMPTY; after[rr][cc]=p;
+          const cont=generateFurtherCaptures(after, rr, cc, true, isW);
+          if(cont.length===0) res.push(moveObj(r,c,rr,cc,[{r:er,c:ec}]));
+          else for(const m of cont) res.push(moveObj(r,c,m.to.r,m.to.c,[{r:er,c:ec},...m.captures]));
+          rr+=dr; cc+=dc;
+        }
+      }
+    }
+  }else{
+    const dirs=[[1,1],[1,-1],[-1,1],[-1,-1]];
+    for(const [dr,dc] of dirs){
+      const mr=r+dr, mc=c+dc, lr=r+2*dr, lc=c+2*dc;
+      if(inside(lr,lc) && inside(mr,mc) && enemy(board[mr][mc]) && board[lr][lc]===EMPTY){
+        const after=cloneBoard(board);
+        after[r][c]=EMPTY; after[mr][mc]=EMPTY;
+        let newP=board[r][c], became=false, endR=lr, endC=lc;
+        if(isW && endR===0){ newP=WK; became=true; }
+        if(!isW && endR===S-1){ newP=BK; became=true; }
+        after[endR][endC]=newP;
+        const cont=generateFurtherCaptures(after,endR,endC,became,isW);
+        if(cont.length===0) res.push(moveObj(r,c,endR,endC,[{r:mr,c:mc}],became));
+        else for(const m of cont) res.push(moveObj(r,c,m.to.r,m.to.c,[{r:mr,c:mc},...m.captures],became||m.becameKing));
+      }
+    }
+  }
+  const maxLen = res.reduce((m,a)=>Math.max(m,a.captures.length),0);
+  return res.filter(a=>a.captures.length===maxLen);
+}
+
+function applyMove(board,mv){
+  const b=cloneBoard(board);
+  const p0=b[mv.from.r][mv.from.c];
+  b[mv.from.r][mv.from.c]=EMPTY;
+  for(const cap of mv.captures){ b[cap.r][cap.c]=EMPTY; }
+  let p=p0;
+  if(!isKing(p)){
+    if(isWhite(p) && mv.to.r===0) p=WK;
+    if(isBlack(p) && mv.to.r===S-1) p=BK;
+  }
+  b[mv.to.r][mv.to.c]=p;
+  return b;
+}
+
+/* ---------- Animation orchestrée + sons (UNE seule RAF) ---------- */
+function animateMoveAndApply(mv, onDone){
+  const piece = state[mv.from.r][mv.from.c];
+  const capturing = mv.captures.length>0;
+  const dur = capturing ? ANIM_MS_CAPTURE : ANIM_MS_MOVE;
+
+  capturing ? AudioFX.capture() : AudioFX.move();
+
+  // calcul du moment où la pièce animée “passe” sur chaque capturée
+  const crosses = [];
+  const xFrom = mv.from.c + 0.5, yFrom = mv.from.r + 0.5;
+  const xTo   = mv.to.c   + 0.5, yTo   = mv.to.r   + 0.5;
+  const dx = xTo - xFrom, dy = yTo - yFrom;
+  const len2 = dx*dx + dy*dy || 1;
+
+  for(const cap of mv.captures){
+    const cx = cap.c + 0.5, cy = cap.r + 0.5;
+    let t = ((cx - xFrom)*dx + (cy - yFrom)*dy) / len2;
+    t = Math.min(1, Math.max(0, t));
+    crosses.push({ r:cap.r, c:cap.c, trigger: Math.max(0, t - 0.06), faded:false, piece: state[cap.r][cap.c] });
+  }
+
+  anim = {
+    from: mv.from, to: mv.to, piece, t0: performance.now(), dur,
+    capturing, crosses, t:0, onDone, mv
+  };
+}
+
+/* ---------- Interaction ---------- */
+function posFromEvent(e){
+  const rect=canvas.getBoundingClientRect();
+  const px=(e.touches?e.touches[0].clientX:e.clientX)-rect.left;
+  const py=(e.touches?e.touches[0].clientY:e.clientY)-rect.top;
+  const c=Math.floor(px/(rect.width/S));
+  const r=Math.floor(py/(rect.height/S));
+  return {r,c};
+}
+canvas.addEventListener('click', (e)=>handleTap(posFromEvent(e)));
+canvas.addEventListener('touchstart',(e)=>{e.preventDefault();handleTap(posFromEvent(e));},{passive:false});
+
+function handleTap({r,c}){
+  if(gameOver(state)!==null) return;
+  if(turn!==W) return; // humain = Blancs
+  if(anim) return;     // ignore pendant anim
+
+  if(selected){
+    const k=keyRC(selected.r,selected.c);
+    const mv=(legalMap.get(k)||[]).find(m=>m.to.r===r && m.to.c===c);
+    if(mv){ playHuman(mv); return; }
+  }
+  const p=state[r][c];
+  if(p!==EMPTY && isWhite(p)){
+    const k=keyRC(r,c);
+    if(legalMap.has(k)){ selected={r,c}; draw(); return; }
+  }
+  selected=null; draw();
+}
+
+function playHuman(mv){
+  selected=null;
+  animateMoveAndApply(mv, afterAnyMove);
+}
+
+/* ---------- Tour suivant & IA ---------- */
+function afterAnyMove(){
+  // bascule de tour, recalcul, redraw, statut, fin.
+  turn = opposite(turn);
+  refreshLegals(); draw(); updateStatus();
+
+  const end = gameOver(state);
+  if(end!==null){
+    if(end===W){ statusEl.textContent = "Vous avez gagné 🎉"; AudioFX.win(); }
+    else if(end===B){ statusEl.textContent = "Vous avez perdu 😔"; AudioFX.lose(); }
+    else statusEl.textContent = "Partie terminée.";
+    return;
+  }
+
+  // Tour IA (Noirs)
+  if(turn===B){
+    aiMove();
+  }
+}
+
+function updateStatus(){
+  const side = turn===W? "Blancs" : "Noirs";
+  statusEl.textContent = `Au tour des ${side}${mustCapture?" • prise obligatoire":""}.`;
+}
+
+function gameOver(board){
+  const w=countPieces(board,true), b=countPieces(board,false);
+  if(w===0) return B;   // Noirs gagnent
+  if(b===0) return W;   // Blancs gagnent
+  const ms=generateAllMoves(board, turn);
+  if(ms.length===0) return opposite(turn);
+  return null;
+}
+function countPieces(board,whites){
+  let n=0; for(let r=0;r<S;r++)for(let c=0;c<S;c++){const p=board[r][c];
+    if(p!==EMPTY){ if(whites && isWhite(p)) n++; if(!whites && isBlack(p)) n++; }}
+  return n;
+}
+
+/* ---------- IA (Minimax / Negamax + alpha-beta) ---------- */
+function aiMove(){
+  const depth = (level==='hard')? 6 : 4;
+  const {best} = minimaxRoot(state, B, depth);
+  if(!best){
+    statusEl.textContent="Vous avez gagné 🎉 (IA bloquée)";
+    AudioFX.win();
+    return;
+  }
+  setTimeout(()=>{
+    animateMoveAndApply(best, afterAnyMove);
+  }, AI_THINK_DELAY);
+}
+
+function minimaxRoot(board, side, depth){
+  const moves=generateAllMoves(board, side);
+  moves.sort((a,b)=>b.captures.length-a.captures.length);
+  let alpha=-Infinity,beta=Infinity,best=null,bestScore=-Infinity;
+  for(const m of moves){
+    const s = -negamax(applyMove(board,m), opposite(side), depth-1, -beta, -alpha);
+    if(s>bestScore){ bestScore=s; best=m; }
+    if(s>alpha) alpha=s;
+    if(alpha>=beta) break;
+  }
+  return {best,score:bestScore};
+}
+
+function negamax(board, side, depth, alpha, beta){
+  const t = terminal(board);
+  if(t!==null) return (side===W? t : -t);
+  if(depth===0) return evaluate(board, side);
+
+  const moves=generateAllMoves(board, side);
+  if(moves.length===0) return -99999;
+  moves.sort((a,b)=>b.captures.length-a.captures.length);
+
+  let best=-Infinity;
+  for(const m of moves){
+    const sc = -negamax(applyMove(board,m), opposite(side), depth-1, -beta, -alpha);
+    if(sc>best) best=sc;
+    if(best>alpha) alpha=best;
+    if(alpha>=beta) break;
+  }
+  return best;
+}
+
+function terminal(board){
+  const w=countPieces(board,true), b=countPieces(board,false);
+  if(w===0) return -99999; // noir gagne
+  if(b===0) return  99999; // blanc gagne
+  return null;
+}
+
+function evaluate(board, side){
+  // Matériel + mobilité + développement basique
+  let score=0;
+  for(let r=0;r<S;r++)for(let c=0;c<S;c++){
+    const p=board[r][c];
+    if(p===W)  score+=100 + (S-1-r)*2;
+    if(p===B)  score-=100 + r*2;
+    if(p===WK) score+=300;
+    if(p===BK) score-=300;
+  }
+  const wm=generateAllMoves(board,W).length, bm=generateAllMoves(board,B).length;
+  score += (wm-bm)*2;
+  if(generateAllMoves(board,W).some(m=>m.captures.length)) score+=4;
+  if(generateAllMoves(board,B).some(m=>m.captures.length)) score-=4;
+  return (side===W)? score : -score;
+}
+
+/* ---------- UI: niveau & reset ---------- */
+document.getElementsByName('lvl').forEach(r=>{
+  r.addEventListener('change',()=>{
+    level = r.value==='hard' ? 'hard' : 'normal';
+    levelNameEl.textContent = level==='hard' ? 'Difficile' : 'Normal';
+  });
+});
+document.getElementById('new').addEventListener('click', async ()=>{
+  await AudioFX.resume();
+  state=initialState(); turn=W; selected=null; dying=[]; anim=null;
+  refreshLegals(); draw(); updateStatus();
+});
+
+/* ---------- Resize HiDPI & boucle unique ---------- */
+function resize(){
+  const wrap=document.querySelector('.board-wrap');
+  const rect=wrap.getBoundingClientRect();
+  const dpr=Math.min(2, window.devicePixelRatio||1);
+  canvas.width=Math.round(rect.width*dpr);
+  canvas.height=canvas.width;
+  sizePx=canvas.width; square=sizePx/S;
+  draw();
+}
+window.addEventListener('resize', resize);
+
+function loop(){
+  const nowT = performance.now();
+
+  // progression animation (si active)
+  if(anim){
+    const tRaw = (nowT - anim.t0) / anim.dur;
+    const t = Math.min(1, Math.max(0, tRaw));
+    anim.t = t;
+
+    // déclenche les fades des capturés quand la pièce les dépasse
+    for(const x of anim.crosses){
+      if(!x.faded && t >= x.trigger){
+        x.faded = true;
+        dying.push({ r:x.r, c:x.c, piece:x.piece, t0: nowT, dur: 220 });
+      }
+    }
+
+    // fin d'anim → on applique le coup, couronne, puis on enchaîne
+    if(t >= 1){
+      const mv = anim.mv;
+      const wasMan = (anim.piece===W || anim.piece===B);
+      anim = null;
+
+      state = applyMove(state, mv);
+      const pEnd = state[mv.to.r][mv.to.c];
+      if(wasMan && isKing(pEnd)) AudioFX.crown();
+
+      // laisse finir le petit fade avant suite
+      setTimeout(()=>{ (mv && typeof mv.onDone==='function') ? mv.onDone() : afterAnyMove(); }, 60);
+    }
+  }
+
+  draw();
+  requestAnimationFrame(loop);
+}
+
+/* ---------- Init ---------- */
+refreshLegals(); resize(); updateStatus();
+AudioFX.resume();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
