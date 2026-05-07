@@ -140,8 +140,8 @@ export default function DashboardPage() {
           <Link href="/withdraw" className="block px-4 py-3 text-zinc-400 hover:text-yellow-400">
             Retrait
           </Link>
-          <Link href="/leaderboard" className="block px-4 py-3 text-zinc-400 hover:text-yellow-400">
-            Classement
+          <Link href="/depot" className="block px-4 py-3 text-zinc-400 hover:text-yellow-400">
+            Depots
           </Link>
           <Link href="/support" className="block px-4 py-3 text-zinc-400 hover:text-yellow-400">
             Support
