@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabase"; // adapte le chemin si besoin
+import { supabase } from "@/lib/supabaseClient";
 
 const MONTANTS = [100, 250, 500, 1000, 2500, 5000];
 
