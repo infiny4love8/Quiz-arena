@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-const MONTANTS = [100, 250, 500, 1000, 2500, 5000];
+const MONTANTS = [25, 50, 100, 150, 200, 250, 500, 1000, 2500, 5000];
 
 export default function DepotPage() {
   const [montant, setMontant] = useState<number | null>(null);
@@ -73,7 +73,7 @@ export default function DepotPage() {
           <h2 style={styles.title}>Dépôt envoyé !</h2>
           <p style={styles.subtitle}>
             Ton dépôt de <strong style={{ color: "#f59e0b" }}>{montant?.toLocaleString()} GDS</strong> est en attente de validation.
-            <br />Les coins seront ajoutés dès confirmation.
+            <br />Les coins seront ajoutés dans 2-3 minutes dès confirmation.
           </p>
           <button
             style={styles.btnPrimary}

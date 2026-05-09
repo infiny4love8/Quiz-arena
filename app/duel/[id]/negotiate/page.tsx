@@ -4,14 +4,14 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-type Theme = "drapeaux" | "marques" | "films";
+type Theme = "drapeaux" | "memoire" | "tankarena";
 type Role = "a" | "b";
 type Phase = "theme" | "bet";
 
 const THEMES: { id: Theme; label: string; icon: string; desc: string; color: string }[] = [
   { id: "drapeaux", label: "Drapeaux", icon: "🌍", desc: "Reconnais les drapeaux du monde", color: "#3b82f6" },
-  { id: "marques", label: "Marques", icon: "🏷️", desc: "Identifie les logos de marques", color: "#8b5cf6" },
-  { id: "films", label: "Films & Séries", icon: "🎬", desc: "Quiz cinéma et séries", color: "#f59e0b" },
+  { id: "memoire", label: "Mémoire", icon: "🧠", desc: "Teste ta mémoire en un temps limité", color: "#8b5cf6" },
+  { id: "tankarena", label: "Tank Arena", icon: "🎮", desc: "Affronte ton adversaire dans l'arène", color: "#f59e0b" },
 ];
 
 type DuelData = {

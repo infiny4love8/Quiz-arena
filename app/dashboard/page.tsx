@@ -143,8 +143,8 @@ export default function DashboardPage() {
           <Link href="/duel" className="block rounded-2xl px-4 py-3 text-zinc-300 transition hover:bg-white/5 hover:text-yellow-400">
             Duel 1v1
           </Link>
-          <Link href="/classement" className="block rounded-2xl px-4 py-3 text-zinc-300 transition hover:bg-white/5 hover:text-yellow-400">
-            Classement
+          <Link href="/training" className="block rounded-2xl px-4 py-3 text-zinc-300 transition hover:bg-white/5 hover:text-yellow-400">
+            Entrainement
           </Link>
           <Link href="/withdraw" className="block rounded-2xl px-4 py-3 text-zinc-300 transition hover:bg-white/5 hover:text-yellow-400">
             Retrait

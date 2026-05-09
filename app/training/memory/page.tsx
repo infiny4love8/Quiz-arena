@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
 
 type Level = "normal" | "hard";
-type GameStatus = "menu" | "memorize" | "question" | "feedback" | "finished";
+type GameStatus = "menu" | "memorize" | "question" | "feedback" | "finished" | "waiting";
 
 type EmojiItem = {
   emoji: string;
@@ -37,7 +39,6 @@ type AnswerHistory = {
 };
 
 const EMOJIS: EmojiItem[] = [
-  // Fruits
   { emoji: "🍎", category: "fruit", color: "red" },
   { emoji: "🍓", category: "fruit", color: "red" },
   { emoji: "🍒", category: "fruit", color: "red" },
@@ -48,8 +49,6 @@ const EMOJIS: EmojiItem[] = [
   { emoji: "🍇", category: "fruit", color: "other" },
   { emoji: "🥝", category: "fruit", color: "green" },
   { emoji: "🍍", category: "fruit", color: "yellow" },
-
-  // Transport
   { emoji: "🚗", category: "transport", color: "red" },
   { emoji: "🚌", category: "transport", color: "yellow" },
   { emoji: "🚕", category: "transport", color: "yellow" },
@@ -60,8 +59,6 @@ const EMOJIS: EmojiItem[] = [
   { emoji: "🚢", category: "transport", color: "blue" },
   { emoji: "🚁", category: "transport", color: "red" },
   { emoji: "🚂", category: "transport", color: "other" },
-
-  // Animals
   { emoji: "🐶", category: "animal", color: "other" },
   { emoji: "🐱", category: "animal", color: "other" },
   { emoji: "🦁", category: "animal", color: "yellow" },
@@ -72,8 +69,6 @@ const EMOJIS: EmojiItem[] = [
   { emoji: "🐰", category: "animal", color: "other" },
   { emoji: "🐢", category: "animal", color: "green" },
   { emoji: "🦊", category: "animal", color: "orange" },
-
-  // Symbols
   { emoji: "⭐", category: "symbol", color: "yellow" },
   { emoji: "❤️", category: "symbol", color: "red" },
   { emoji: "🔥", category: "symbol", color: "orange" },
@@ -107,8 +102,22 @@ const LEVEL_CONFIG = {
   },
 };
 
+// ── Shuffle aléatoire normal (options)
 function shuffleArray<T>(array: T[]): T[] {
   return [...array].sort(() => Math.random() - 0.5);
+}
+
+// ── Shuffle déterministe avec seed (même résultat pour les deux joueurs en duel)
+function seededShuffle<T>(array: T[], seed: string): T[] {
+  const arr = [...array];
+  let s = 0;
+  for (let i = 0; i < seed.length; i++) s += seed.charCodeAt(i);
+  for (let i = arr.length - 1; i > 0; i--) {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    const j = s % (i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }
 
 function getCategoryLabel(category: EmojiItem["category"]) {
@@ -118,114 +127,73 @@ function getCategoryLabel(category: EmojiItem["category"]) {
     animal: "animaux",
     symbol: "symboles",
   };
-
   return labels[category];
 }
 
 function playSound(type: "start" | "tick" | "correct" | "wrong" | "finish") {
   if (typeof window === "undefined") return;
-
   const AudioContextClass =
     window.AudioContext ||
-    (window as typeof window & { webkitAudioContext?: typeof AudioContext })
-      .webkitAudioContext;
-
+    (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!AudioContextClass) return;
-
   const audio = new AudioContextClass();
   const oscillator = audio.createOscillator();
   const gain = audio.createGain();
-
   oscillator.connect(gain);
   gain.connect(audio.destination);
-
-  if (type === "start") {
-    oscillator.frequency.value = 520;
-    gain.gain.value = 0.08;
-    oscillator.type = "triangle";
-  }
-
-  if (type === "tick") {
-    oscillator.frequency.value = 880;
-    gain.gain.value = 0.04;
-    oscillator.type = "sine";
-  }
-
-  if (type === "correct") {
-    oscillator.frequency.value = 900;
-    gain.gain.value = 0.09;
-    oscillator.type = "sine";
-  }
-
-  if (type === "wrong") {
-    oscillator.frequency.value = 160;
-    gain.gain.value = 0.12;
-    oscillator.type = "sawtooth";
-  }
-
-  if (type === "finish") {
-    oscillator.frequency.value = 720;
-    gain.gain.value = 0.09;
-    oscillator.type = "triangle";
-  }
-
+  if (type === "start")   { oscillator.frequency.value = 520; gain.gain.value = 0.08; oscillator.type = "triangle"; }
+  if (type === "tick")    { oscillator.frequency.value = 880; gain.gain.value = 0.04; oscillator.type = "sine"; }
+  if (type === "correct") { oscillator.frequency.value = 900; gain.gain.value = 0.09; oscillator.type = "sine"; }
+  if (type === "wrong")   { oscillator.frequency.value = 160; gain.gain.value = 0.12; oscillator.type = "sawtooth"; }
+  if (type === "finish")  { oscillator.frequency.value = 720; gain.gain.value = 0.09; oscillator.type = "triangle"; }
   oscillator.start();
   gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.2);
   oscillator.stop(audio.currentTime + 0.22);
 }
 
-function buildRound(roundId: number, level: Level): Round {
+// ── Construire un round — seedId optionnel pour le mode duel
+function buildRound(roundId: number, level: Level, seedId?: string): Round {
   const config = LEVEL_CONFIG[level];
-  const sequence = shuffleArray(EMOJIS).slice(0, config.sequenceSize);
+
+  // Seed = duelId + roundId → mêmes emojis pour les deux joueurs
+  const sequence = seedId
+    ? seededShuffle(EMOJIS, `${seedId}-${roundId}`).slice(0, config.sequenceSize)
+    : shuffleArray(EMOJIS).slice(0, config.sequenceSize);
 
   const possibleTypes: QuestionType[] =
     level === "normal"
-      ? [
-          "position-of-emoji",
-          "emoji-at-position",
-          "count-category",
-          "missing-emoji",
-        ]
-      : [
-          "position-of-emoji",
-          "emoji-at-position",
-          "count-category",
-          "missing-emoji",
-          "rebuild-order",
-        ];
+      ? ["position-of-emoji", "emoji-at-position", "count-category", "missing-emoji"]
+      : ["position-of-emoji", "emoji-at-position", "count-category", "missing-emoji", "rebuild-order"];
 
-  const questionType =
-    possibleTypes[Math.floor(Math.random() * possibleTypes.length)];
+  // Type de question aussi déterministe en duel
+  const typeIndex = seedId
+    ? Math.abs(seedId.split("").reduce((a, c) => a + c.charCodeAt(0), roundId)) % possibleTypes.length
+    : Math.floor(Math.random() * possibleTypes.length);
+  const questionType = possibleTypes[typeIndex];
 
   if (questionType === "position-of-emoji") {
-    const targetIndex = Math.floor(Math.random() * sequence.length);
+    const targetIndex = seedId
+      ? Math.abs(seedId.charCodeAt(0) + roundId) % sequence.length
+      : Math.floor(Math.random() * sequence.length);
     const targetEmoji = sequence[targetIndex];
-
     return {
-      id: roundId,
-      sequence,
-      questionType,
+      id: roundId, sequence, questionType,
       question: `Où était placé ${targetEmoji.emoji} ?`,
-      options: Array.from({ length: sequence.length }, (_, i) =>
-        String(i + 1)
-      ),
+      options: Array.from({ length: sequence.length }, (_, i) => String(i + 1)),
       answer: String(targetIndex + 1),
     };
   }
 
   if (questionType === "emoji-at-position") {
-    const targetIndex = Math.floor(Math.random() * sequence.length);
+    const targetIndex = seedId
+      ? Math.abs(seedId.charCodeAt(1) + roundId) % sequence.length
+      : Math.floor(Math.random() * sequence.length);
     const correctEmoji = sequence[targetIndex].emoji;
     const wrongOptions = shuffleArray(
-      EMOJIS.filter((item) => item.emoji !== correctEmoji).map(
-        (item) => item.emoji
-      )
+      EMOJIS.filter((item) => item.emoji !== correctEmoji).map((item) => item.emoji)
     ).slice(0, 3);
-
     return {
-      id: roundId,
-      sequence,
-      questionType,
+      id: roundId, sequence, questionType,
       question: `Quel emoji était en position ${targetIndex + 1} ?`,
       options: shuffleArray([correctEmoji, ...wrongOptions]),
       answer: correctEmoji,
@@ -233,42 +201,34 @@ function buildRound(roundId: number, level: Level): Round {
   }
 
   if (questionType === "count-category") {
-    const categories: EmojiItem["category"][] = [
-      "fruit",
-      "transport",
-      "animal",
-      "symbol",
-    ];
-    const category =
-      categories[Math.floor(Math.random() * categories.length)];
+    const categories: EmojiItem["category"][] = ["fruit", "transport", "animal", "symbol"];
+    const catIndex = seedId
+      ? Math.abs(seedId.charCodeAt(2) + roundId) % categories.length
+      : Math.floor(Math.random() * categories.length);
+    const category = categories[catIndex];
     const count = sequence.filter((item) => item.category === category).length;
-
+    const options = shuffleArray(["0", "1", "2", "3", "4", "5", "6"])
+      .filter((v, _, arr) => v === String(count) || arr.indexOf(v) < 3)
+      .slice(0, 4);
+    if (!options.includes(String(count))) options[0] = String(count);
     return {
-      id: roundId,
-      sequence,
-      questionType,
+      id: roundId, sequence, questionType,
       question: `Combien de ${getCategoryLabel(category)} étaient affichés ?`,
-      options: shuffleArray(["0", "1", "2", "3", "4", "5", "6"]).slice(0, 4).includes(String(count))
-        ? shuffleArray(["0", "1", "2", "3", "4", "5", "6"]).slice(0, 4)
-        : shuffleArray([String(count), "0", "1", "2", "3", "4", "5", "6"]).slice(0, 4),
+      options: shuffleArray(options),
       answer: String(count),
     };
   }
 
   if (questionType === "missing-emoji") {
-    const missingIndex = Math.floor(Math.random() * sequence.length);
+    const missingIndex = seedId
+      ? Math.abs(seedId.charCodeAt(3) + roundId) % sequence.length
+      : Math.floor(Math.random() * sequence.length);
     const missingEmoji = sequence[missingIndex].emoji;
-
     const wrongOptions = shuffleArray(
-      EMOJIS.filter((item) => item.emoji !== missingEmoji).map(
-        (item) => item.emoji
-      )
+      EMOJIS.filter((item) => item.emoji !== missingEmoji).map((item) => item.emoji)
     ).slice(0, 3);
-
     return {
-      id: roundId,
-      sequence,
-      questionType,
+      id: roundId, sequence, questionType,
       question: "Quel emoji faisait partie de la séquence ?",
       options: shuffleArray([missingEmoji, ...wrongOptions]),
       answer: missingEmoji,
@@ -276,10 +236,8 @@ function buildRound(roundId: number, level: Level): Round {
   }
 
   const answer = sequence.map((item) => item.emoji).join(" ");
-
   return {
-    id: roundId,
-    sequence,
+    id: roundId, sequence,
     questionType: "rebuild-order",
     question: "Remets la séquence dans le bon ordre.",
     options: shuffleArray(sequence.map((item) => item.emoji)),
@@ -287,38 +245,66 @@ function buildRound(roundId: number, level: Level): Round {
   };
 }
 
+// ── Composant principal ────────────────────────────────────
 export default function MemoryRushPage() {
-  const [level, setLevel] = useState<Level>("normal");
-  const [status, setStatus] = useState<GameStatus>("menu");
-  const [roundIndex, setRoundIndex] = useState(0);
-  const [currentRound, setCurrentRound] = useState<Round | null>(null);
-  const [score, setScore] = useState(0);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Params duel (optionnels)
+  const duelId   = searchParams.get("duelId");
+  const duelRole = searchParams.get("role") as "a" | "b" | null;
+  const isDuelMode = !!duelId && !!duelRole;
+
+  const [level, setLevel]                   = useState<Level>("normal");
+  const [status, setStatus]                 = useState<GameStatus>("menu");
+  const [roundIndex, setRoundIndex]         = useState(0);
+  const [currentRound, setCurrentRound]     = useState<Round | null>(null);
+  const [score, setScore]                   = useState(0);
   const [answerTimeLeft, setAnswerTimeLeft] = useState(6);
   const [memorizeProgress, setMemorizeProgress] = useState(100);
   const [selectedAnswer, setSelectedAnswer] = useState("");
   const [rebuildSelection, setRebuildSelection] = useState<string[]>([]);
-  const [history, setHistory] = useState<AnswerHistory[]>([]);
-  const [bestScore, setBestScore] = useState(0);
-  const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
+  const [history, setHistory]               = useState<AnswerHistory[]>([]);
+  const [bestScore, setBestScore]           = useState(0);
+  const [feedback, setFeedback]             = useState<"correct" | "wrong" | null>(null);
+  const [opponentDone, setOpponentDone]     = useState(false);
 
   const memorizeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const channelRef       = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  const config = LEVEL_CONFIG[level];
-  const target = config.target;
+  const config      = LEVEL_CONFIG[level];
+  const target      = config.target;
   const gameProgress = Math.min((score / target) * 100, 100);
 
+  // ── Init : charger meilleur score + Realtime si duel
   useEffect(() => {
     const saved = localStorage.getItem("training_score_memoryrush");
-
     if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setBestScore(parsed.points || 0);
-      } catch {
-        setBestScore(0);
-      }
+      try { setBestScore(JSON.parse(saved).points || 0); } catch {}
     }
-  }, []);
+
+    // Mode duel : écouter si l'adversaire a fini
+    if (isDuelMode && duelId) {
+      channelRef.current = supabase
+        .channel(`memory-duel-${duelId}`)
+        .on("postgres_changes",
+          { event: "UPDATE", schema: "public", table: "duels", filter: `id=eq.${duelId}` },
+          (payload) => {
+            const updated = payload.new as { score_a: number | null; score_b: number | null; status: string };
+            const oppScore = duelRole === "a" ? updated.score_b : updated.score_a;
+            if (oppScore !== null) setOpponentDone(true);
+            if (updated.status === "finished") {
+              router.push(`/duel/${duelId}/play`);
+            }
+          }
+        )
+        .subscribe();
+    }
+
+    return () => {
+      if (channelRef.current) supabase.removeChannel(channelRef.current);
+    };
+  }, [isDuelMode, duelId, duelRole, router]);
 
   function startGame() {
     playSound("start");
@@ -329,12 +315,13 @@ export default function MemoryRushPage() {
     setSelectedAnswer("");
     setRebuildSelection([]);
     setFeedback(null);
+    setOpponentDone(false);
     startRound(0);
   }
 
   function startRound(nextRoundIndex: number) {
-    const round = buildRound(nextRoundIndex + 1, level);
-
+    // Passer le duelId comme seed pour le mode duel
+    const round = buildRound(nextRoundIndex + 1, level, duelId ?? undefined);
     setCurrentRound(round);
     setRoundIndex(nextRoundIndex);
     setSelectedAnswer("");
@@ -343,10 +330,7 @@ export default function MemoryRushPage() {
     setMemorizeProgress(100);
     setStatus("memorize");
 
-    if (memorizeTimerRef.current) {
-      clearInterval(memorizeTimerRef.current);
-    }
-
+    if (memorizeTimerRef.current) clearInterval(memorizeTimerRef.current);
     const totalMs = LEVEL_CONFIG[level].memorizeSeconds * 1000;
     const startedAt = Date.now();
 
@@ -354,12 +338,8 @@ export default function MemoryRushPage() {
       const elapsed = Date.now() - startedAt;
       const percentage = Math.max(0, 100 - (elapsed / totalMs) * 100);
       setMemorizeProgress(percentage);
-
       if (elapsed >= totalMs) {
-        if (memorizeTimerRef.current) {
-          clearInterval(memorizeTimerRef.current);
-        }
-
+        if (memorizeTimerRef.current) clearInterval(memorizeTimerRef.current);
         setAnswerTimeLeft(LEVEL_CONFIG[level].answerSeconds);
         setStatus("question");
         playSound("tick");
@@ -367,26 +347,69 @@ export default function MemoryRushPage() {
     }, 50);
   }
 
-  function finishGame(finalScore: number, finalHistory: AnswerHistory[]) {
+  const finishGame = useCallback(async (finalScore: number, finalHistory: AnswerHistory[]) => {
     playSound("finish");
-    setStatus("finished");
 
     const newBest = Math.max(bestScore, finalScore);
     setBestScore(newBest);
 
-    localStorage.setItem(
-      "training_score_memoryrush",
-      JSON.stringify({
-        score: `${finalScore}/${target}`,
-        points: finalScore,
-        level,
-        success: finalScore >= target,
-        updatedAt: new Date().toISOString(),
-      })
-    );
+    localStorage.setItem("training_score_memoryrush", JSON.stringify({
+      score: `${finalScore}/${target}`,
+      points: finalScore,
+      level,
+      success: finalScore >= target,
+      updatedAt: new Date().toISOString(),
+    }));
 
+    // ── Mode duel : sauvegarder dans Supabase
+    if (isDuelMode && duelId && duelRole) {
+      const scoreCol = duelRole === "a" ? "score_a" : "score_b";
+
+      await supabase
+        .from("duels")
+        .update({ [scoreCol]: finalScore })
+        .eq("id", duelId);
+
+      // Vérifier si l'adversaire a déjà fini
+      const { data: updated } = await supabase
+        .from("duels")
+        .select("*")
+        .eq("id", duelId)
+        .single();
+
+      if (updated) {
+        const oppScore = duelRole === "a" ? updated.score_b : updated.score_a;
+
+        if (oppScore !== null) {
+          // Les deux ont fini → calculer le gagnant
+          const { data: { user } } = await supabase.auth.getUser();
+          const myId = user?.id;
+          const winnerId = finalScore > oppScore
+            ? myId
+            : oppScore > finalScore
+            ? (duelRole === "a" ? updated.player_b : updated.player_a)
+            : null; // match nul
+
+          await supabase
+            .from("duels")
+            .update({ status: "finished", winner: winnerId })
+            .eq("id", duelId);
+
+          router.push(`/duel/${duelId}/play`);
+          return;
+        }
+
+        // Adversaire pas encore fini → écran d'attente
+        setStatus("waiting");
+        setHistory(finalHistory);
+        return;
+      }
+    }
+
+    // Mode solo
+    setStatus("finished");
     setHistory(finalHistory);
-  }
+  }, [bestScore, target, level, isDuelMode, duelId, duelRole, router]);
 
   function goNextRound(updatedHistory: AnswerHistory[], updatedScore: number) {
     setTimeout(() => {
@@ -400,16 +423,11 @@ export default function MemoryRushPage() {
 
   function submitAnswer(answer: string) {
     if (!currentRound || status !== "question") return;
-
     const isCorrect = answer === currentRound.answer;
     const gainedPoints = isCorrect
-      ? answerTimeLeft >= 4
-        ? 12
-        : 10
+      ? answerTimeLeft >= 4 ? 12 : 10
       : config.wrongPenalty;
-
     const nextScore = Math.max(0, score + gainedPoints);
-
     const newHistoryItem: AnswerHistory = {
       round: roundIndex + 1,
       question: currentRound.question,
@@ -418,27 +436,21 @@ export default function MemoryRushPage() {
       correct: isCorrect,
       points: gainedPoints,
     };
-
     const updatedHistory = [...history, newHistoryItem];
-
     setSelectedAnswer(answer);
     setFeedback(isCorrect ? "correct" : "wrong");
     setScore(nextScore);
     setHistory(updatedHistory);
-
     playSound(isCorrect ? "correct" : "wrong");
     setStatus("feedback");
-
     goNextRound(updatedHistory, nextScore);
   }
 
   function handleRebuildSelect(emoji: string) {
     if (!currentRound || status !== "question") return;
     if (rebuildSelection.includes(emoji)) return;
-
     const nextSelection = [...rebuildSelection, emoji];
     setRebuildSelection(nextSelection);
-
     if (nextSelection.length === currentRound.sequence.length) {
       submitAnswer(nextSelection.join(" "));
     }
@@ -446,21 +458,15 @@ export default function MemoryRushPage() {
 
   useEffect(() => {
     if (status !== "question") return;
-
-    if (answerTimeLeft <= 0) {
-      submitAnswer("");
-      return;
-    }
-
+    if (answerTimeLeft <= 0) { submitAnswer(""); return; }
     const timer = setTimeout(() => {
       setAnswerTimeLeft((prev) => prev - 1);
       if (answerTimeLeft <= 3) playSound("tick");
     }, 1000);
-
     return () => clearTimeout(timer);
   }, [status, answerTimeLeft]);
 
-  if (!currentRound && status !== "menu") {
+  if (!currentRound && status !== "menu" && status !== "waiting" && status !== "finished") {
     return (
       <main className="flex min-h-screen items-center justify-center bg-black text-white">
         <p className="text-red-400">Chargement...</p>
@@ -486,38 +492,33 @@ export default function MemoryRushPage() {
               <h1 className="text-xl font-black">
                 Memory<span className="text-red-400">Rush</span>
               </h1>
-              <p className="text-xs text-zinc-400">Mémoire · vitesse · réflexe</p>
+              <p className="text-xs text-zinc-400">
+                {isDuelMode ? "⚔️ Mode Duel" : "Mémoire · vitesse · réflexe"}
+              </p>
             </div>
           </a>
-
-          <a
-            href="/training"
-            className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold text-white transition hover:border-red-400 hover:text-red-400"
-          >
+          <a href="/training" className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold text-white transition hover:border-red-400 hover:text-red-400">
             Retour
           </a>
         </nav>
       </header>
 
+      {/* ── MENU ── */}
       {status === "menu" && (
         <section className="relative z-10 mx-auto grid min-h-[calc(100vh-88px)] max-w-7xl gap-10 px-5 py-12 lg:grid-cols-[1fr_0.9fr] lg:items-center">
           <div>
             <div className="mb-5 inline-flex rounded-full border border-red-400/30 bg-red-500/10 px-4 py-2 text-sm font-bold text-red-300">
-              Nouveau mode training
+              {isDuelMode ? "⚔️ Duel en cours" : "Mode training"}
             </div>
-
             <h2 className="text-4xl font-black leading-tight md:text-6xl">
               Mémorise vite. <br />
               Réponds juste. <br />
-              <span className="text-red-400">Bats l’objectif.</span>
+              <span className="text-red-400">Bats l&apos;objectif.</span>
             </h2>
-
             <p className="mt-6 max-w-xl text-lg leading-8 text-zinc-300">
-              Memory Rush affiche une séquence d’emojis pendant 2.5 secondes.
-              Ensuite, une question change à chaque round : position, ordre,
-              élément manquant ou catégorie. Simple, rapide, mais pas facile.
+              Memory Rush affiche une séquence d&apos;emojis pendant 2.5 secondes.
+              {isDuelMode && " En mode duel, vous avez exactement les mêmes séquences !"}
             </p>
-
             <div className="mt-8 grid max-w-xl gap-4 sm:grid-cols-3">
               <div className="rounded-3xl border border-zinc-800 bg-zinc-950/90 p-5">
                 <p className="text-sm text-zinc-400">Affichage</p>
@@ -529,375 +530,212 @@ export default function MemoryRushPage() {
               </div>
               <div className="rounded-3xl border border-zinc-800 bg-zinc-950/90 p-5">
                 <p className="text-sm text-zinc-400">Best</p>
-                <h3 className="mt-2 text-3xl font-black text-red-400">
-                  {bestScore}
-                </h3>
+                <h3 className="mt-2 text-3xl font-black text-red-400">{bestScore}</h3>
               </div>
             </div>
           </div>
 
           <div className="relative">
             <div className="absolute inset-0 rounded-[2rem] bg-red-500/20 blur-2xl" />
-
             <div className="relative rounded-[2rem] border border-red-400/20 bg-zinc-950 p-6 shadow-2xl">
               <h3 className="text-3xl font-black">Choisis ton niveau</h3>
-              <p className="mt-2 text-sm text-zinc-400">
-                Normal pour apprendre. Difficile pour tester ta vraie mémoire.
-              </p>
-
               <div className="mt-8 grid gap-4">
-                <button
-                  onClick={() => setLevel("normal")}
-                  className={`rounded-3xl border p-5 text-left transition ${
-                    level === "normal"
-                      ? "border-red-400 bg-red-500/10 text-red-400"
-                      : "border-zinc-800 bg-black text-zinc-300 hover:border-red-400"
-                  }`}
-                >
+                <button onClick={() => setLevel("normal")}
+                  className={`rounded-3xl border p-5 text-left transition ${level === "normal" ? "border-red-400 bg-red-500/10 text-red-400" : "border-zinc-800 bg-black text-zinc-300 hover:border-red-400"}`}>
                   <p className="text-xl font-black">Normal</p>
-                  <p className="mt-2 text-sm text-zinc-500">
-                    5 objets · 6 sec pour répondre · objectif 70 pts
-                  </p>
+                  <p className="mt-2 text-sm text-zinc-500">5 objets · 6 sec · objectif 70 pts</p>
                 </button>
-
-                <button
-                  onClick={() => setLevel("hard")}
-                  className={`rounded-3xl border p-5 text-left transition ${
-                    level === "hard"
-                      ? "border-red-400 bg-red-500/10 text-red-400"
-                      : "border-zinc-800 bg-black text-zinc-300 hover:border-red-400"
-                  }`}
-                >
+                <button onClick={() => setLevel("hard")}
+                  className={`rounded-3xl border p-5 text-left transition ${level === "hard" ? "border-red-400 bg-red-500/10 text-red-400" : "border-zinc-800 bg-black text-zinc-300 hover:border-red-400"}`}>
                   <p className="text-xl font-black">Difficile</p>
-                  <p className="mt-2 text-sm text-zinc-500">
-                    6 objets · 5 sec pour répondre · objectif 90 pts · pénalité
-                    -3
-                  </p>
+                  <p className="mt-2 text-sm text-zinc-500">6 objets · 5 sec · objectif 90 pts · pénalité -3</p>
                 </button>
               </div>
-
               <div className="mt-6 rounded-3xl border border-red-400/20 bg-red-500/10 p-5">
                 <p className="text-sm text-zinc-400">Objectif sélectionné</p>
-                <h4 className="mt-2 text-4xl font-black text-red-400">
-                  {LEVEL_CONFIG[level].target} pts
-                </h4>
-                <p className="mt-2 text-sm text-zinc-300">
-                  {LEVEL_CONFIG[level].rounds} rounds ·{" "}
-                  {LEVEL_CONFIG[level].memorizeSeconds}s de mémorisation
-                </p>
+                <h4 className="mt-2 text-4xl font-black text-red-400">{LEVEL_CONFIG[level].target} pts</h4>
               </div>
-
-              <button
-                onClick={startGame}
-                className="mt-6 w-full rounded-2xl bg-red-500 px-6 py-4 font-black text-black shadow-xl shadow-red-500/20 transition hover:scale-[1.01] hover:bg-red-400"
-              >
-                Commencer Memory Rush
+              <button onClick={startGame}
+                className="mt-6 w-full rounded-2xl bg-red-500 px-6 py-4 font-black text-black shadow-xl shadow-red-500/20 transition hover:scale-[1.01] hover:bg-red-400">
+                {isDuelMode ? "⚔️ Commencer le duel" : "Commencer Memory Rush"}
               </button>
             </div>
           </div>
         </section>
       )}
 
-      {(status === "memorize" ||
-        status === "question" ||
-        status === "feedback") &&
-        currentRound && (
-          <section className="relative z-10 mx-auto max-w-6xl px-5 py-8">
-            <div className="mb-6 grid gap-4 md:grid-cols-4">
-              <div className="rounded-3xl border border-zinc-800 bg-zinc-950/90 p-5">
-                <p className="text-sm text-zinc-400">Round</p>
-                <h3 className="mt-2 text-3xl font-black text-red-400">
-                  {roundIndex + 1}/{config.rounds}
-                </h3>
-              </div>
+      {/* ── ATTENTE ADVERSAIRE (mode duel) ── */}
+      {status === "waiting" && (
+        <section className="relative z-10 flex min-h-[calc(100vh-88px)] items-center justify-center px-5">
+          <div className="text-center max-w-sm">
+            <div className="w-20 h-20 mx-auto mb-8 rounded-full border-2 border-red-500/30 border-t-red-500 animate-spin" />
+            <h2 className="text-2xl font-black mb-3">
+              Tu as fini ! <span className="text-red-400">{score} pts</span>
+            </h2>
+            <p className="text-zinc-400 text-sm mb-2">En attente de ton adversaire...</p>
+            <p className="text-zinc-600 text-xs">Le résultat s&apos;affichera dès qu&apos;il aura terminé</p>
+            {opponentDone && (
+              <p className="mt-4 text-red-400 text-sm animate-pulse">
+                L&apos;adversaire vient de finir ! Calcul du résultat...
+              </p>
+            )}
+          </div>
+        </section>
+      )}
 
-              <div className="rounded-3xl border border-zinc-800 bg-zinc-950/90 p-5">
-                <p className="text-sm text-zinc-400">Score</p>
-                <h3 className="mt-2 text-3xl font-black text-red-400">
-                  {score}
-                </h3>
-              </div>
-
-              <div className="rounded-3xl border border-zinc-800 bg-zinc-950/90 p-5">
-                <p className="text-sm text-zinc-400">Objectif</p>
-                <h3 className="mt-2 text-3xl font-black text-red-400">
-                  {target}
-                </h3>
-              </div>
-
-              <div className="rounded-3xl border border-zinc-800 bg-zinc-950/90 p-5">
-                <p className="text-sm text-zinc-400">
-                  {status === "memorize" ? "Mémoire" : "Réponse"}
-                </p>
-                <h3 className="mt-2 text-3xl font-black text-red-400">
-                  {status === "memorize" ? "2.5s" : `${answerTimeLeft}s`}
-                </h3>
-              </div>
+      {/* ── JEU ── */}
+      {(status === "memorize" || status === "question" || status === "feedback") && currentRound && (
+        <section className="relative z-10 mx-auto max-w-6xl px-5 py-8">
+          <div className="mb-6 grid gap-4 md:grid-cols-4">
+            <div className="rounded-3xl border border-zinc-800 bg-zinc-950/90 p-5">
+              <p className="text-sm text-zinc-400">Round</p>
+              <h3 className="mt-2 text-3xl font-black text-red-400">{roundIndex + 1}/{config.rounds}</h3>
             </div>
-
-            <div className="mb-6 h-3 overflow-hidden rounded-full bg-zinc-900">
-              <div
-                className="h-full rounded-full bg-red-500 transition-all"
-                style={{
-                  width:
-                    status === "memorize"
-                      ? `${memorizeProgress}%`
-                      : `${gameProgress}%`,
-                }}
-              />
+            <div className="rounded-3xl border border-zinc-800 bg-zinc-950/90 p-5">
+              <p className="text-sm text-zinc-400">Score</p>
+              <h3 className="mt-2 text-3xl font-black text-red-400">{score}</h3>
             </div>
+            <div className="rounded-3xl border border-zinc-800 bg-zinc-950/90 p-5">
+              <p className="text-sm text-zinc-400">Objectif</p>
+              <h3 className="mt-2 text-3xl font-black text-red-400">{target}</h3>
+            </div>
+            <div className="rounded-3xl border border-zinc-800 bg-zinc-950/90 p-5">
+              <p className="text-sm text-zinc-400">{status === "memorize" ? "Mémoire" : "Réponse"}</p>
+              <h3 className="mt-2 text-3xl font-black text-red-400">
+                {status === "memorize" ? "2.5s" : `${answerTimeLeft}s`}
+              </h3>
+            </div>
+          </div>
 
-            <div className="relative">
-              <div className="absolute inset-0 rounded-[2rem] bg-red-500/20 blur-2xl" />
+          <div className="mb-6 h-3 overflow-hidden rounded-full bg-zinc-900">
+            <div className="h-full rounded-full bg-red-500 transition-all"
+              style={{ width: status === "memorize" ? `${memorizeProgress}%` : `${gameProgress}%` }} />
+          </div>
 
-              <div className="relative min-h-[540px] rounded-[2rem] border border-red-400/20 bg-zinc-950 p-6 text-center shadow-2xl md:p-10">
-                {status === "memorize" && (
-                  <div>
-                    <p className="font-bold text-red-400">
-                      Mémorise la séquence
-                    </p>
-                    <h2 className="mt-3 text-2xl font-black md:text-4xl">
-                      La consigne arrive après.
-                    </h2>
+          <div className="relative">
+            <div className="absolute inset-0 rounded-[2rem] bg-red-500/20 blur-2xl" />
+            <div className="relative min-h-[540px] rounded-[2rem] border border-red-400/20 bg-zinc-950 p-6 text-center shadow-2xl md:p-10">
 
-                    <div className="mt-12 flex flex-wrap items-center justify-center gap-5">
-                      {currentRound.sequence.map((item, index) => (
-                        <div
-                          key={`${item.emoji}-${index}`}
-                          className="animate-pulse rounded-[2rem] border border-red-400/20 bg-black px-7 py-6 text-6xl shadow-xl md:text-7xl"
-                        >
-                          {item.emoji}
-                        </div>
-                      ))}
-                    </div>
-
-                    <p className="mt-10 text-sm text-zinc-500">
-                      Retiens les objets, les positions et l’ordre.
-                    </p>
+              {status === "memorize" && (
+                <div>
+                  <p className="font-bold text-red-400">Mémorise la séquence</p>
+                  <h2 className="mt-3 text-2xl font-black md:text-4xl">La consigne arrive après.</h2>
+                  <div className="mt-12 flex flex-wrap items-center justify-center gap-5">
+                    {currentRound.sequence.map((item, index) => (
+                      <div key={`${item.emoji}-${index}`}
+                        className="animate-pulse rounded-[2rem] border border-red-400/20 bg-black px-7 py-6 text-6xl shadow-xl md:text-7xl">
+                        {item.emoji}
+                      </div>
+                    ))}
                   </div>
-                )}
+                </div>
+              )}
 
-                {(status === "question" || status === "feedback") && (
-                  <div>
-                    <p className="font-bold text-red-400">
-                      Question {roundIndex + 1}
-                    </p>
+              {(status === "question" || status === "feedback") && (
+                <div>
+                  <p className="font-bold text-red-400">Question {roundIndex + 1}</p>
+                  <h2 className="mx-auto mt-4 max-w-3xl text-2xl font-black md:text-4xl">{currentRound.question}</h2>
 
-                    <h2 className="mx-auto mt-4 max-w-3xl text-2xl font-black md:text-4xl">
-                      {currentRound.question}
-                    </h2>
+                  {currentRound.questionType !== "rebuild-order" && (
+                    <div className="mt-10 grid gap-4 md:grid-cols-2">
+                      {currentRound.options.map((option) => {
+                        const isCorrect = option === currentRound.answer;
+                        const isSelected = option === selectedAnswer;
+                        let buttonClass = "border-zinc-800 bg-black hover:border-red-400 hover:text-red-400";
+                        if (status === "feedback") {
+                          if (isCorrect) buttonClass = "border-green-400 bg-green-500/10 text-green-400";
+                          else if (isSelected && !isCorrect) buttonClass = "border-red-400 bg-red-500/10 text-red-400";
+                          else buttonClass = "border-zinc-800 bg-black text-zinc-500";
+                        }
+                        return (
+                          <button key={option} disabled={status !== "question"} onClick={() => submitAnswer(option)}
+                            className={`rounded-2xl border px-5 py-5 text-center text-3xl font-black transition ${buttonClass}`}>
+                            {option}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
 
-                    {currentRound.questionType !== "rebuild-order" && (
-                      <div className="mt-10 grid gap-4 md:grid-cols-2">
+                  {currentRound.questionType === "rebuild-order" && (
+                    <div className="mt-10">
+                      <div className="rounded-3xl border border-zinc-800 bg-black p-5">
+                        <p className="text-sm text-zinc-400">Ta sélection</p>
+                        <div className="mt-4 flex min-h-[80px] flex-wrap items-center justify-center gap-3">
+                          {rebuildSelection.length === 0
+                            ? <p className="text-sm text-zinc-600">Clique les emojis dans l&apos;ordre.</p>
+                            : rebuildSelection.map((emoji, index) => (
+                              <div key={`${emoji}-${index}`} className="rounded-2xl bg-red-500/10 px-5 py-4 text-4xl">{emoji}</div>
+                            ))}
+                        </div>
+                      </div>
+                      <div className="mt-6 grid gap-4 sm:grid-cols-3">
                         {currentRound.options.map((option) => {
-                          const isCorrect = option === currentRound.answer;
-                          const isSelected = option === selectedAnswer;
-
-                          let buttonClass =
-                            "border-zinc-800 bg-black hover:border-red-400 hover:text-red-400";
-
-                          if (status === "feedback") {
-                            if (isCorrect) {
-                              buttonClass =
-                                "border-green-400 bg-green-500/10 text-green-400";
-                            } else if (isSelected && !isCorrect) {
-                              buttonClass =
-                                "border-red-400 bg-red-500/10 text-red-400";
-                            } else {
-                              buttonClass =
-                                "border-zinc-800 bg-black text-zinc-500";
-                            }
-                          }
-
+                          const used = rebuildSelection.includes(option);
                           return (
-                            <button
-                              key={option}
-                              disabled={status !== "question"}
-                              onClick={() => submitAnswer(option)}
-                              className={`rounded-2xl border px-5 py-5 text-center text-3xl font-black transition ${buttonClass}`}
-                            >
+                            <button key={option} disabled={status !== "question" || used}
+                              onClick={() => handleRebuildSelect(option)}
+                              className={`rounded-2xl border px-5 py-5 text-4xl font-black transition ${used ? "border-zinc-800 bg-zinc-950 text-zinc-700" : "border-zinc-800 bg-black hover:border-red-400 hover:text-red-400"}`}>
                               {option}
                             </button>
                           );
                         })}
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {currentRound.questionType === "rebuild-order" && (
-                      <div className="mt-10">
-                        <div className="rounded-3xl border border-zinc-800 bg-black p-5">
-                          <p className="text-sm text-zinc-400">
-                            Ta sélection
-                          </p>
-
-                          <div className="mt-4 flex min-h-[80px] flex-wrap items-center justify-center gap-3">
-                            {rebuildSelection.length === 0 ? (
-                              <p className="text-sm text-zinc-600">
-                                Clique les emojis dans l’ordre.
-                              </p>
-                            ) : (
-                              rebuildSelection.map((emoji, index) => (
-                                <div
-                                  key={`${emoji}-${index}`}
-                                  className="rounded-2xl bg-red-500/10 px-5 py-4 text-4xl"
-                                >
-                                  {emoji}
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                          {currentRound.options.map((option) => {
-                            const used = rebuildSelection.includes(option);
-
-                            return (
-                              <button
-                                key={option}
-                                disabled={status !== "question" || used}
-                                onClick={() => handleRebuildSelect(option)}
-                                className={`rounded-2xl border px-5 py-5 text-4xl font-black transition ${
-                                  used
-                                    ? "border-zinc-800 bg-zinc-950 text-zinc-700"
-                                    : "border-zinc-800 bg-black hover:border-red-400 hover:text-red-400"
-                                }`}
-                              >
-                                {option}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {feedback && (
-                      <div
-                        className={`mt-8 rounded-3xl border p-5 ${
-                          feedback === "correct"
-                            ? "border-green-400/30 bg-green-500/10 text-green-400"
-                            : "border-red-400/30 bg-red-500/10 text-red-400"
-                        }`}
-                      >
-                        <p className="text-xl font-black">
-                          {feedback === "correct"
-                            ? "Correct !"
-                            : "Faux / temps écoulé"}
-                        </p>
-                        <p className="mt-2 text-sm">
-                          Réponse : {currentRound.answer}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+                  {feedback && (
+                    <div className={`mt-8 rounded-3xl border p-5 ${feedback === "correct" ? "border-green-400/30 bg-green-500/10 text-green-400" : "border-red-400/30 bg-red-500/10 text-red-400"}`}>
+                      <p className="text-xl font-black">{feedback === "correct" ? "Correct !" : "Faux / temps écoulé"}</p>
+                      <p className="mt-2 text-sm">Réponse : {currentRound.answer}</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          </section>
-        )}
+          </div>
+        </section>
+      )}
 
+      {/* ── RÉSULTAT SOLO ── */}
       {status === "finished" && (
         <section className="relative z-10 mx-auto flex min-h-[calc(100vh-88px)] max-w-4xl items-center justify-center px-5 py-12">
           <div className="w-full rounded-[2rem] border border-red-400/20 bg-zinc-950 p-6 text-center shadow-2xl md:p-10">
             <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[2rem] bg-red-500 text-4xl shadow-lg shadow-red-500/30">
               {score >= target ? "🏆" : "🧠"}
             </div>
-
             <p className="mt-6 font-bold text-red-400">Memory Rush terminé</p>
-
             <h2 className="mt-3 text-4xl font-black md:text-6xl">
               {score >= target ? "Objectif réussi !" : "Presque !"}
             </h2>
-
             <p className="mt-4 text-lg text-zinc-400">
-              Ton score :{" "}
-              <span className="font-black text-red-400">{score} pts</span> /
-              objectif :{" "}
-              <span className="font-black text-red-400">{target} pts</span>
+              Ton score : <span className="font-black text-red-400">{score} pts</span> / objectif : <span className="font-black text-red-400">{target} pts</span>
             </p>
-
             <div className="mt-10 grid gap-4 md:grid-cols-3">
               <div className="rounded-3xl border border-zinc-800 bg-black p-5">
                 <p className="text-sm text-zinc-400">Meilleur score</p>
-                <h3 className="mt-2 text-3xl font-black text-red-400">
-                  {bestScore}
-                </h3>
+                <h3 className="mt-2 text-3xl font-black text-red-400">{bestScore}</h3>
               </div>
-
               <div className="rounded-3xl border border-zinc-800 bg-black p-5">
                 <p className="text-sm text-zinc-400">Niveau</p>
-                <h3 className="mt-2 text-3xl font-black text-red-400">
-                  {config.label}
-                </h3>
+                <h3 className="mt-2 text-3xl font-black text-red-400">{config.label}</h3>
               </div>
-
               <div className="rounded-3xl border border-zinc-800 bg-black p-5">
                 <p className="text-sm text-zinc-400">Rounds</p>
-                <h3 className="mt-2 text-3xl font-black text-red-400">
-                  {config.rounds}
-                </h3>
+                <h3 className="mt-2 text-3xl font-black text-red-400">{config.rounds}</h3>
               </div>
             </div>
-
-            {score < target && (
-              <div className="mt-8 rounded-3xl border border-red-400/20 bg-red-500/10 p-5">
-                <p className="font-bold text-red-300">
-                  Il te manque {target - score} points pour réussir le challenge.
-                </p>
-              </div>
-            )}
-
-            <div className="mt-8 rounded-3xl border border-zinc-800 bg-black p-5 text-left">
-              <h3 className="text-xl font-black">Résumé</h3>
-
-              <div className="mt-5 max-h-[300px] space-y-3 overflow-auto pr-1">
-                {history.map((item) => (
-                  <div
-                    key={item.round}
-                    className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-bold">Round {item.round}</p>
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-black ${
-                          item.correct
-                            ? "bg-green-500/10 text-green-400"
-                            : "bg-red-500/10 text-red-400"
-                        }`}
-                      >
-                        {item.correct ? "Correct" : "Faux"}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-sm text-zinc-400">
-                      {item.question}
-                    </p>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      Ta réponse : {item.selected} · Réponse : {item.answer}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <button
-                onClick={startGame}
-                className="flex-1 rounded-2xl bg-red-500 px-6 py-4 font-black text-black shadow-lg shadow-red-500/20 transition hover:bg-red-400"
-              >
+              <button onClick={startGame}
+                className="flex-1 rounded-2xl bg-red-500 px-6 py-4 font-black text-black shadow-lg shadow-red-500/20 transition hover:bg-red-400">
                 Rejouer
               </button>
-
-              <button
-                onClick={() => setStatus("menu")}
-                className="flex-1 rounded-2xl border border-zinc-700 px-6 py-4 font-bold text-white transition hover:border-red-400 hover:text-red-400"
-              >
+              <button onClick={() => setStatus("menu")}
+                className="flex-1 rounded-2xl border border-zinc-700 px-6 py-4 font-bold text-white transition hover:border-red-400 hover:text-red-400">
                 Changer niveau
               </button>
-
-              <a
-                href="/training"
-                className="flex-1 rounded-2xl border border-red-400/30 px-6 py-4 text-center font-bold text-red-400 transition hover:bg-red-500 hover:text-black"
-              >
+              <a href="/training"
+                className="flex-1 rounded-2xl border border-red-400/30 px-6 py-4 text-center font-bold text-red-400 transition hover:bg-red-500 hover:text-black">
                 Retour training
               </a>
             </div>
