@@ -1,581 +1,496 @@
 "use client";
 
-// ============================================================
-// app/tournamentsponsorise/play/page.tsx
-// ============================================================
+import { useEffect, useMemo, useState } from "react";
+import flagsQuestions from "@/data/flags.json";
 
-import { useEffect, useState, useRef, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+const QUESTION_LIMIT = 10;
+const TIME_PER_QUESTION = 10;
 
-type GameState = "loading" | "ready" | "playing" | "submitting" | "done" | "error";
-
-type Tournament = {
-  id: string;
-  title: string;
-  game_type: string;
-  ends_at: string;
-  max_players: number;
-  prize_1: number;
-  prize_2: number;
+type Question = {
+  id: string | number;
+  question: string;
+  flag: string;
+  answer: string;
+  options: string[];
 };
 
-// ── Compte à rebours ──
-function useCountdown(target: string) {
-  const calc = useCallback(() =>
-    Math.max(0, Math.floor((new Date(target).getTime() - Date.now()) / 1000)),
-  [target]);
-  const [secs, setSecs] = useState(calc);
-  useEffect(() => {
-    setSecs(calc());
-    const t = setInterval(() => setSecs(calc()), 1000);
-    return () => clearInterval(t);
-  }, [calc]);
-  return secs;
+type AnswerState = {
+  questionId: string | number;
+  question: string;
+  selected: string;
+  correctAnswer: string;
+  correct: boolean;
+  timedOut?: boolean;
+};
+
+type StoredScore = {
+  id: string;
+  date: string;
+  score: number;
+  correctAnswers: number;
+  totalQuestions: number;
+  points: number;
+};
+
+function fisherYates<T>(array: T[]): T[] {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }
 
-function pad(n: number) { return String(n).padStart(2, "0"); }
-
-// ============================================================
-// MINI-JEU FLAGS — Quiz drapeaux
-// Remplace le contenu de cette fonction par ton vrai jeu
-// Le seul contrat : appeler onScore(score) quand c'est terminé
-// ============================================================
-function GameFlags({ onScore }: { onScore: (score: number) => void }) {
-  const questions = [
-    { flag: "🇫🇷", options: ["France", "Belgique", "Italie", "Espagne"], answer: "France" },
-    { flag: "🇧🇷", options: ["Argentine", "Brésil", "Mexique", "Colombie"], answer: "Brésil" },
-    { flag: "🇯🇵", options: ["Chine", "Corée", "Japon", "Vietnam"], answer: "Japon" },
-    { flag: "🇩🇪", options: ["Autriche", "Suisse", "Pays-Bas", "Allemagne"], answer: "Allemagne" },
-    { flag: "🇸🇳", options: ["Mali", "Sénégal", "Ghana", "Côte d'Ivoire"], answer: "Sénégal" },
-  ];
-
-  const [idx, setIdx] = useState(0);
-  const [score, setScore] = useState(0);
-  const [chosen, setChosen] = useState<string | null>(null);
-  const [startTime] = useState(Date.now());
-
-  const handleAnswer = (opt: string) => {
-    if (chosen) return;
-    setChosen(opt);
-    const correct = opt === questions[idx].answer;
-    const newScore = correct ? score + 200 : score;
-    setTimeout(() => {
-      if (idx + 1 >= questions.length) {
-        // Bonus temps : plus vite = plus de points
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
-        const timeBonus = Math.max(0, 300 - elapsed * 5);
-        onScore(newScore + timeBonus);
-      } else {
-        setScore(newScore);
-        setIdx(idx + 1);
-        setChosen(null);
-      }
-    }, 800);
-  };
-
-  const q = questions[idx];
-
-  return (
-    <div>
-      <div style={{ textAlign: "center", marginBottom: 28 }}>
-        <div style={{ fontSize: 10, color: "#4a5568", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>
-          Question {idx + 1} / {questions.length}
-        </div>
-        <div style={{ fontSize: 88, lineHeight: 1, marginBottom: 16 }}>{q.flag}</div>
-        <div style={{ fontSize: 15, color: "#8892a4" }}>Quel pays est ce drapeau ?</div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        {q.options.map(opt => {
-          const isCorrect = opt === q.answer;
-          const isChosen = opt === chosen;
-          let bg = "#111420";
-          let border = "#1e2130";
-          let color = "#c8c0b0";
-          if (chosen) {
-            if (isCorrect) { bg = "#0d2e1f"; border = "#22c55e"; color = "#22c55e"; }
-            else if (isChosen) { bg = "#2d0f0f"; border = "#ef4444"; color = "#ef4444"; }
-          }
-          return (
-            <button
-              key={opt}
-              onClick={() => handleAnswer(opt)}
-              disabled={!!chosen}
-              style={{
-                background: bg, border: `2px solid ${border}`,
-                borderRadius: 12, padding: "14px 10px",
-                fontSize: 14, fontWeight: 600, color,
-                cursor: chosen ? "default" : "pointer",
-                transition: "all 0.15s",
-              }}
-            >
-              {opt}
-            </button>
-          );
-        })}
-      </div>
-
-      <div style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: "#4a5568" }}>
-        Score actuel : <span style={{ color: "#f59e0b", fontWeight: 700 }}>{score} pts</span>
-      </div>
-    </div>
-  );
+function prepareQuestions(): Question[] {
+  return fisherYates(flagsQuestions)
+    .slice(0, QUESTION_LIMIT)
+    .map((q: Question) => ({
+      ...q,
+      options: fisherYates(q.options),
+    }));
 }
 
-// ============================================================
-// MINI-JEU MEMORY — Branche sur ton vrai jeu ici
-// ============================================================
-function GameMemory({ onScore }: { onScore: (score: number) => void }) {
-  // Remplace par ton composant Memory existant
-  // Appelle onScore(score) quand la partie est terminée
-  return (
-    <div style={{ textAlign: "center", padding: "40px 0" }}>
-      <div style={{ fontSize: 40, marginBottom: 12 }}>🧠</div>
-      <p style={{ color: "#8892a4", marginBottom: 20 }}>Jeu Mémoire</p>
-      <p style={{ color: "#4a5568", fontSize: 13, marginBottom: 24 }}>
-        Branche ton composant Memory ici via onScore()
-      </p>
-      <button
-        onClick={() => onScore(Math.floor(Math.random() * 800) + 200)}
-        style={{ background: "#22c55e", border: "none", borderRadius: 10, color: "#0a0c10", padding: "12px 24px", fontWeight: 700, cursor: "pointer" }}
-      >
-        Terminer (test)
-      </button>
-    </div>
-  );
+function getStars(correctAnswers: number, total: number) {
+  const pct = total ? (correctAnswers / total) * 100 : 0;
+  if (pct >= 90) return 3;
+  if (pct >= 70) return 2;
+  if (pct >= 50) return 1;
+  return 0;
 }
 
-// ============================================================
-// MINI-JEU TANK — Branche sur ton vrai jeu ici
-// ============================================================
-function GameTank({ onScore }: { onScore: (score: number) => void }) {
-  return (
-    <div style={{ textAlign: "center", padding: "40px 0" }}>
-      <div style={{ fontSize: 40, marginBottom: 12 }}>🎯</div>
-      <p style={{ color: "#8892a4", marginBottom: 20 }}>Jeu Tank</p>
-      <p style={{ color: "#4a5568", fontSize: 13, marginBottom: 24 }}>
-        Branche ton composant Tank ici via onScore()
-      </p>
-      <button
-        onClick={() => onScore(Math.floor(Math.random() * 800) + 200)}
-        style={{ background: "#22c55e", border: "none", borderRadius: 10, color: "#0a0c10", padding: "12px 24px", fontWeight: 700, cursor: "pointer" }}
-      >
-        Terminer (test)
-      </button>
-    </div>
-  );
+function getRank(correctAnswers: number, total: number) {
+  const pct = total ? (correctAnswers / total) * 100 : 0;
+  if (pct >= 90) return "Diamond";
+  if (pct >= 70) return "Gold";
+  if (pct >= 50) return "Silver";
+  return "Bronze";
 }
 
-// ============================================================
-// MINI-JEU RUSH — Branche sur ton vrai jeu ici
-// ============================================================
-function GameRush({ onScore }: { onScore: (score: number) => void }) {
-  return (
-    <div style={{ textAlign: "center", padding: "40px 0" }}>
-      <div style={{ fontSize: 40, marginBottom: 12 }}>⚡</div>
-      <p style={{ color: "#8892a4", marginBottom: 20 }}>Jeu Rush</p>
-      <p style={{ color: "#4a5568", fontSize: 13, marginBottom: 24 }}>
-        Branche ton composant Rush ici via onScore()
-      </p>
-      <button
-        onClick={() => onScore(Math.floor(Math.random() * 800) + 200)}
-        style={{ background: "#22c55e", border: "none", borderRadius: 10, color: "#0a0c10", padding: "12px 24px", fontWeight: 700, cursor: "pointer" }}
-      >
-        Terminer (test)
-      </button>
-    </div>
-  );
+function playClickSound() {
+  if (typeof window === "undefined") return;
+  const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+  const ctx = new AudioCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = "sine";
+  osc.frequency.value = 440;
+  gain.gain.value = 0.03;
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.08);
+  osc.stop(ctx.currentTime + 0.09);
+
+  osc.onended = () => ctx.close();
 }
 
-// ============================================================
-// PAGE PRINCIPALE
-// ============================================================
-export default function TournamentPlayPage() {
-  const router = useRouter();
-  const params = useSearchParams();
-  const tournamentId = params.get("id");
-  const gameType = params.get("game") ?? "flags";
-
-  const [gameState, setGameState] = useState<GameState>("loading");
-  const [tournament, setTournament] = useState<Tournament | null>(null);
-  const [finalScore, setFinalScore] = useState(0);
-  const [rank, setRank] = useState<number | null>(null);
-  const [errorMsg, setErrorMsg] = useState("");
-  const submitted = useRef(false);
-
-  const secsLeft = useCountdown(tournament?.ends_at ?? new Date(Date.now() + 999999).toISOString());
+export default function FlagsTrainingPage() {
+  const [hasStarted, setHasStarted] = useState(false);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedAnswer, setSelectedAnswer] = useState("");
+  const [answers, setAnswers] = useState<AnswerState[]>([]);
+  const [isFinished, setIsFinished] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(TIME_PER_QUESTION);
+  const [combo, setCombo] = useState(0);
+  const [scoresHistory, setScoresHistory] = useState<StoredScore[]>([]);
+  const [animKey, setAnimKey] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
-    const init = async () => {
-      if (!tournamentId) { router.push("/tournamentsponsorise"); return; }
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.push("/login"); return; }
-
-      // Vérifier l'entrée existe
-      const { data: entry } = await supabase
-        .from("tournament_entries")
-        .select("finished, score")
-        .eq("tournament_id", tournamentId)
-        .eq("user_id", user.id)
-        .single();
-
-      if (!entry) {
-        router.push("/tournamentsponsorise");
-        return;
+    if (typeof window === "undefined") return;
+    // ✅ clé historique détaillé
+    const raw = localStorage.getItem("flags-training-history");
+    if (raw) {
+      try {
+        setScoresHistory(JSON.parse(raw));
+      } catch {
+        setScoresHistory([]);
       }
-
-      // Déjà joué
-      if (entry.finished) {
-        router.push("/tournamentsponsorise");
-        return;
-      }
-
-      // Récupérer le tournois
-      const { data: t } = await supabase
-        .from("tournaments")
-        .select("id, title, game_type, ends_at, max_players, prize_1, prize_2")
-        .eq("id", tournamentId)
-        .single();
-
-      if (!t) { router.push("/tournamentsponsorise"); return; }
-
-      setTournament(t);
-      setGameState("ready");
-    };
-    init();
-  }, [tournamentId, router]);
-
-  // Si le temps est écoulé pendant le jeu → soumission automatique avec score 0
-  useEffect(() => {
-    if (secsLeft <= 0 && gameState === "playing" && !submitted.current) {
-      handleScore(0);
     }
-  }, [secsLeft, gameState]);
+  }, []);
 
-  const handleScore = useCallback(async (score: number) => {
-    if (submitted.current) return;
-    submitted.current = true;
-    setFinalScore(score);
-    setGameState("submitting");
+  useEffect(() => {
+    if (hasStarted) setQuestions(prepareQuestions());
+  }, [hasStarted]);
 
-    const { data, error } = await supabase.rpc("submit_tournament_score", {
-      p_tournament_id: tournamentId,
-      p_score: score,
-    });
+  const currentQuestion = questions[currentIndex];
 
-    if (error || !data?.ok) {
-      setErrorMsg("Erreur lors de la soumission du score.");
-      setGameState("error");
+  const correctAnswers = useMemo(
+    () => answers.filter((a) => a.correct).length,
+    [answers]
+  );
+
+  const points = correctAnswers * 100 + combo * 25;
+  const stars = getStars(correctAnswers, questions.length);
+
+  const progress = questions.length
+    ? ((currentIndex + (selectedAnswer ? 1 : 0)) / questions.length) * 100
+    : 0;
+
+  useEffect(() => {
+    if (!questions.length || selectedAnswer || isFinished) return;
+
+    if (timeLeft <= 0) {
+      handleTimeout();
       return;
     }
 
-    // Récupérer le classement actuel pour afficher le rang provisoire
-    const { data: scores } = await supabase
-      .from("tournament_entries")
-      .select("user_id, score")
-      .eq("tournament_id", tournamentId)
-      .eq("finished", true)
-      .order("score", { ascending: false });
+    const timer = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [timeLeft, questions, selectedAnswer, isFinished]);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (scores && user) {
-      const pos = scores.findIndex((s: any) => s.user_id === user.id);
-      setRank(pos + 1);
-    }
+  function saveScore() {
+    if (typeof window === "undefined") return;
 
-    setGameState("done");
-  }, [tournamentId]);
-
-  const formatTime = (s: number) => `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
-
-  // ── LOADING ──
-  if (gameState === "loading") {
-    return (
-      <>
-        <style>{css}</style>
-        <div style={pageCentered}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>⚡</div>
-          <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 18, color: "#8892a4", letterSpacing: "0.1em" }}>Chargement…</div>
-        </div>
-      </>
+    // ✅ sauvegarde pour la page training principale
+    localStorage.setItem(
+      "training_score_flags",
+      JSON.stringify({
+        score: `${correctAnswers}/${questions.length}`,
+        points,
+      })
     );
+
+    // ✅ historique détaillé séparé
+    const raw = localStorage.getItem("flags-training-history");
+    const existing: StoredScore[] = raw ? JSON.parse(raw) : [];
+
+    const newScore: StoredScore = {
+      id: crypto.randomUUID(),
+      date: new Date().toISOString(),
+      score: questions.length
+        ? Math.round((correctAnswers / questions.length) * 100)
+        : 0,
+      correctAnswers,
+      totalQuestions: questions.length,
+      points,
+    };
+
+    const updated = [newScore, ...existing].slice(0, 20);
+    localStorage.setItem("flags-training-history", JSON.stringify(updated));
+    setScoresHistory(updated);
   }
 
-  // ── ERREUR ──
-  if (gameState === "error") {
+  function finishQuiz() {
+    setIsFinished(true);
+    saveScore();
+  }
+
+  function goNext() {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      if (currentIndex + 1 < questions.length) {
+        setCurrentIndex((i) => i + 1);
+        setSelectedAnswer("");
+        setTimeLeft(TIME_PER_QUESTION);
+        setAnimKey((k) => k + 1);
+        setIsTransitioning(false);
+      } else {
+        finishQuiz();
+      }
+    }, 250);
+  }
+
+  function handleAnswer(option: string) {
+    if (selectedAnswer || !currentQuestion) return;
+
+    playClickSound();
+    setSelectedAnswer(option);
+
+    const correct = option === currentQuestion.answer;
+    setCombo((prev) => (correct ? prev + 1 : 0));
+
+    const newAnswers = [
+      ...answers,
+      {
+        questionId: currentQuestion.id,
+        question: currentQuestion.question,
+        selected: option,
+        correctAnswer: currentQuestion.answer,
+        correct,
+      },
+    ];
+
+    setAnswers(newAnswers);
+
+    setTimeout(() => {
+      if (currentIndex + 1 < questions.length) {
+        setCurrentIndex((i) => i + 1);
+        setSelectedAnswer("");
+        setTimeLeft(TIME_PER_QUESTION);
+        setAnimKey((k) => k + 1);
+      } else {
+        finishQuiz();
+      }
+    }, 850);
+  }
+
+  function handleTimeout() {
+    if (!currentQuestion || selectedAnswer) return;
+
+    const newAnswers = [
+      ...answers,
+      {
+        questionId: currentQuestion.id,
+        question: currentQuestion.question,
+        selected: "Temps écoulé",
+        correctAnswer: currentQuestion.answer,
+        correct: false,
+        timedOut: true,
+      },
+    ];
+
+    setCombo(0);
+    setAnswers(newAnswers);
+    setSelectedAnswer("timeout");
+
+    setTimeout(() => {
+      if (currentIndex + 1 < questions.length) {
+        setCurrentIndex((i) => i + 1);
+        setSelectedAnswer("");
+        setTimeLeft(TIME_PER_QUESTION);
+        setAnimKey((k) => k + 1);
+      } else {
+        finishQuiz();
+      }
+    }, 850);
+  }
+
+  function restart() {
+    setQuestions(prepareQuestions());
+    setCurrentIndex(0);
+    setSelectedAnswer("");
+    setAnswers([]);
+    setIsFinished(false);
+    setTimeLeft(TIME_PER_QUESTION);
+    setCombo(0);
+    setAnimKey((k) => k + 1);
+  }
+
+  if (!hasStarted) {
     return (
-      <>
-        <style>{css}</style>
-        <div style={pageCentered}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>⚠️</div>
-          <div style={{ color: "#ef4444", marginBottom: 20 }}>{errorMsg}</div>
-          <button onClick={() => router.push("/tournamentsponsorise")} style={btnBack}>
-            Retour aux tournois
+      <main className="min-h-screen bg-black text-white overflow-hidden flex items-center justify-center px-4">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_35%),linear-gradient(180deg,#050505_0%,#000_100%)]" />
+        <div className="relative z-10 w-full max-w-2xl rounded-[2rem] border border-white/10 bg-white/5 p-8 md:p-12 text-center shadow-[0_0_120px_rgba(0,0,0,0.7)] backdrop-blur-xl">
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-500/10 border border-red-500/20 shadow-[0_0_60px_rgba(239,68,68,0.25)]">
+            <div className="h-8 w-8 rounded-full bg-red-500 animate-pulse" />
+          </div>
+          <p className="text-xs uppercase tracking-[0.4em] text-white/40">
+            Flag Arena
+          </p>
+          <h1 className="mt-4 text-4xl md:text-6xl font-black tracking-tight">
+            Défi des drapeaux
+          </h1>
+          <p className="mt-4 text-white/60 max-w-md mx-auto">
+            Mode rapide, score, combo, animations et sauvegarde locale.
+          </p>
+          <button
+            onClick={() => setHasStarted(true)}
+            className="mt-8 rounded-2xl bg-white px-8 py-4 font-black text-black transition hover:scale-[1.03] hover:bg-red-500 hover:text-white shadow-[0_0_30px_rgba(255,255,255,0.12)]"
+          >
+            Lancer la partie
           </button>
         </div>
-      </>
+      </main>
     );
   }
 
-  // ── PRÊT ──
-  if (gameState === "ready") {
+  if (isFinished) {
+    const total = questions.length;
+    const pct = total ? Math.round((correctAnswers / total) * 100) : 0;
+
     return (
-      <>
-        <style>{css}</style>
-        <div style={pageWrap}>
-          <div style={card}>
-            <div style={{ textAlign: "center", marginBottom: 28 }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>
-                {{ flags: "🌍", memory: "🧠", tank: "🎯", rush: "⚡" }[gameType] ?? "🎮"}
-              </div>
-              <div style={{ fontSize: 11, color: "#4a5568", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 6 }}>
-                Tournois sponsorisé
-              </div>
-              <h1 style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 26, color: "#f0ede6", letterSpacing: "0.05em", margin: "0 0 8px" }}>
-                {tournament?.title}
+      <main className="min-h-screen bg-black text-white px-4 py-10 flex items-center justify-center">
+        <div className="w-full max-w-5xl rounded-[2rem] border border-white/10 bg-zinc-950/90 p-6 md:p-10 shadow-2xl">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div>
+              <p className="text-white/50 text-sm uppercase tracking-[0.4em]">
+                Score final
+              </p>
+              <h1 className="mt-2 text-5xl md:text-7xl font-black">
+                {correctAnswers}/{total}
               </h1>
-              <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6 }}>
-                Tu as <span style={{ color: "#f59e0b", fontWeight: 700 }}>{formatTime(secsLeft)}</span> restant pour terminer ta partie.
-                <br />Ton score sera soumis automatiquement à la fin du temps.
+              <div className="mt-3 flex items-center gap-2">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <span
+                    key={i}
+                    className={`text-2xl ${i < stars ? "text-yellow-400" : "text-white/20"}`}
+                  >
+                    ★
+                  </span>
+                ))}
+              </div>
+              <p className="mt-3 text-white/70">
+                {pct}% · {points} points · Rank {getRank(correctAnswers, total)}
               </p>
             </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 24 }}>
-              <div style={infoBox}>
-                <div style={{ fontSize: 20, marginBottom: 4 }}>🏆</div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: "#f59e0b", fontFamily: "'Bebas Neue', cursive" }}>
-                  {tournament?.prize_1} GDS
-                </div>
-                <div style={{ fontSize: 11, color: "#4a5568" }}>1er prix</div>
-              </div>
-              <div style={infoBox}>
-                <div style={{ fontSize: 20, marginBottom: 4 }}>⏱</div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: "#22c55e", fontFamily: "'Bebas Neue', cursive" }}>
-                  {formatTime(secsLeft)}
-                </div>
-                <div style={{ fontSize: 11, color: "#4a5568" }}>Temps restant</div>
-              </div>
-            </div>
-
-            <div style={{ background: "#0d2e1f", border: "1px solid #22c55e30", borderRadius: 10, padding: "12px 16px", marginBottom: 24, fontSize: 12, color: "#22c55e" }}>
-              ✓ Ton ticket a été utilisé · Bonne chance !
-            </div>
-
             <button
-              onClick={() => setGameState("playing")}
-              style={{
-                width: "100%", border: "none", borderRadius: 14,
-                background: "linear-gradient(135deg, #f59e0b, #f97316)",
-                color: "#0a0c10", padding: "16px",
-                fontSize: 18, fontWeight: 900,
-                fontFamily: "'Bebas Neue', cursive", letterSpacing: "0.08em",
-                cursor: "pointer",
-                boxShadow: "0 6px 24px #f59e0b30",
-              }}
+              onClick={restart}
+              className="rounded-2xl bg-white px-6 py-3 font-bold text-black transition hover:bg-red-500 hover:text-white"
             >
-              LANCER LA PARTIE →
+              Rejouer
             </button>
           </div>
-        </div>
-      </>
-    );
-  }
 
-  // ── EN JEU ──
-  if (gameState === "playing") {
-    return (
-      <>
-        <style>{css}</style>
-        <div style={pageWrap}>
-          {/* Barre du haut */}
-          <div style={{
-            display: "flex", justifyContent: "space-between", alignItems: "center",
-            marginBottom: 20, background: "#111420",
-            border: "1px solid #1e2130", borderRadius: 12, padding: "12px 16px",
-          }}>
-            <div style={{ fontSize: 13, color: "#6b7280" }}>{tournament?.title}</div>
-            <div style={{
-              fontFamily: "'Share Tech Mono', monospace",
-              fontSize: 18, fontWeight: 700,
-              color: secsLeft < 60 ? "#ef4444" : secsLeft < 120 ? "#f59e0b" : "#22c55e",
-            }}>
-              ⏱ {formatTime(secsLeft)}
-            </div>
-          </div>
-
-          <div style={card}>
-            {gameType === "flags"  && <GameFlags  onScore={handleScore} />}
-            {gameType === "memory" && <GameMemory onScore={handleScore} />}
-            {gameType === "tank"   && <GameTank   onScore={handleScore} />}
-            {gameType === "rush"   && <GameRush   onScore={handleScore} />}
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  // ── SOUMISSION ──
-  if (gameState === "submitting") {
-    return (
-      <>
-        <style>{css}</style>
-        <div style={pageCentered}>
-          <div style={{ width: 40, height: 40, border: "3px solid #f59e0b40", borderTopColor: "#f59e0b", borderRadius: "50%", animation: "spin 0.8s linear infinite", marginBottom: 16 }} />
-          <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 18, color: "#8892a4", letterSpacing: "0.1em" }}>
-            Soumission du score…
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  // ── TERMINÉ ──
-  if (gameState === "done") {
-    const isTop2 = rank !== null && rank <= 2;
-    return (
-      <>
-        <style>{css}</style>
-        <div style={pageWrap}>
-          <div style={card}>
-            <div style={{ textAlign: "center", marginBottom: 28 }}>
-              <div style={{ fontSize: 56, marginBottom: 12 }}>
-                {rank === 1 ? "🏆" : rank === 2 ? "🥈" : "💪"}
-              </div>
-              <h2 style={{
-                fontFamily: "'Bebas Neue', cursive",
-                fontSize: 32, letterSpacing: "0.06em",
-                color: rank === 1 ? "#f59e0b" : rank === 2 ? "#9ca3af" : "#f0ede6",
-                margin: "0 0 8px",
-              }}>
-                {rank === 1 ? "VICTOIRE !" : rank === 2 ? "2ÈME PLACE !" : "BELLE PARTIE !"}
-              </h2>
-              <p style={{ fontSize: 13, color: "#6b7280" }}>
-                {rank === 1 && "Tu es en tête du classement !"}
-                {rank === 2 && "Tu es en 2ème position !"}
-                {rank && rank > 2 && `Tu es actuellement #${rank} — le classement peut encore changer !`}
-              </p>
-            </div>
-
-            {/* Score */}
-            <div style={{
-              background: "#0d0f14", borderRadius: 14,
-              padding: "20px", textAlign: "center", marginBottom: 16,
-              border: "1px solid #1e2130",
-            }}>
-              <div style={{ fontSize: 11, color: "#4a5568", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>
-                Ton score
-              </div>
-              <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 42, color: "#f59e0b", letterSpacing: "0.04em" }}>
-                {finalScore.toLocaleString()}
-              </div>
-              <div style={{ fontSize: 12, color: "#4a5568" }}>points</div>
-            </div>
-
-            {/* Position provisoire */}
-            {rank && (
-              <div style={{
-                background: isTop2 ? "#0d2e1f" : "#111420",
-                border: `1px solid ${isTop2 ? "#22c55e40" : "#1e2130"}`,
-                borderRadius: 12, padding: "14px 16px",
-                textAlign: "center", marginBottom: 16,
-              }}>
-                <div style={{ fontSize: 13, color: isTop2 ? "#22c55e" : "#8892a4", fontWeight: 600 }}>
-                  Position provisoire : #{rank}
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            {answers.map((a, index) => (
+              <div
+                key={a.questionId}
+                className={`rounded-2xl border p-4 ${
+                  a.correct
+                    ? "border-emerald-500/30 bg-emerald-500/10"
+                    : "border-red-500/30 bg-red-500/10"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-white/50">Question {index + 1}</p>
+                    <h3 className="mt-1 font-semibold">{a.question}</h3>
+                  </div>
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-bold ${
+                      a.correct ? "bg-emerald-500 text-black" : "bg-red-500 text-white"
+                    }`}
+                  >
+                    {a.correct ? "Bonne" : "Fausse"}
+                  </span>
                 </div>
-                {isTop2 && (
-                  <div style={{ fontSize: 12, color: "#4a5568", marginTop: 4 }}>
-                    Si tu gardes cette position, tu gagneras{" "}
-                    <span style={{ color: "#f59e0b", fontWeight: 700 }}>
-                      {rank === 1 ? tournament?.prize_1 : tournament?.prize_2} GDS
+                <div className="mt-4 text-sm space-y-2">
+                  <p>
+                    <span className="text-white/50">Ta réponse :</span>{" "}
+                    <span className={a.correct ? "text-emerald-300" : "text-red-300"}>
+                      {a.selected}
                     </span>
-                    {" "}automatiquement !
-                  </div>
-                )}
-                {!isTop2 && (
-                  <div style={{ fontSize: 12, color: "#4a5568", marginTop: 4 }}>
-                    Continuez à vous entraîner pour le prochain tournois 💪
-                  </div>
-                )}
+                  </p>
+                  <p>
+                    <span className="text-white/50">Bonne réponse :</span>{" "}
+                    <span className="text-emerald-300">{a.correctAnswer}</span>
+                  </p>
+                </div>
               </div>
-            )}
+            ))}
+          </div>
 
-            <div style={{ background: "#1a1d2a", borderRadius: 10, padding: "12px 14px", marginBottom: 24, fontSize: 12, color: "#6b7280", textAlign: "center", lineHeight: 1.6 }}>
-              Le classement final sera affiché après la fin du tournois.<br />
-              Les coins sont crédités automatiquement.
+          <div className="mt-8 rounded-2xl border border-white/10 bg-black/40 p-5">
+            <h2 className="text-lg font-bold">Historique des scores</h2>
+            <div className="mt-4 grid gap-3">
+              {scoresHistory.slice(0, 5).map((s) => (
+                <div
+                  key={s.id}
+                  className="flex items-center justify-between rounded-xl bg-white/5 px-4 py-3 text-sm"
+                >
+                  <span>{new Date(s.date).toLocaleString("fr-FR")}</span>
+                  <span className="font-semibold">
+                    {s.correctAnswers}/{s.totalQuestions} · {s.points} pts
+                  </span>
+                </div>
+              ))}
             </div>
-
-            <button
-              onClick={() => router.push("/tournamentsponsorise")}
-              style={{
-                width: "100%", border: "1px solid #1e2130", borderRadius: 12,
-                background: "#111420", color: "#8892a4",
-                padding: "14px", fontSize: 14, fontWeight: 600, cursor: "pointer",
-                fontFamily: "'DM Sans', sans-serif",
-              }}
-            >
-              Retour aux tournois
-            </button>
           </div>
         </div>
-      </>
+      </main>
     );
   }
 
-  return null;
+  if (!currentQuestion) return null;
+
+  return (
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_40%),linear-gradient(180deg,#050505_0%,#000_100%)] text-white px-4 py-8 md:py-10">
+      <div className="mx-auto max-w-4xl">
+        <div className="mb-4 flex items-center justify-between">
+          <span className="text-sm text-white/50">
+            Question {currentIndex + 1} / {questions.length}
+          </span>
+          <div className="flex items-center gap-3">
+            {combo > 1 && (
+              <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-sm font-bold text-yellow-300 animate-pulse">
+                Combo x{combo}
+              </span>
+            )}
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm">
+              {timeLeft}s
+            </span>
+          </div>
+        </div>
+
+        <div className="mb-5 h-2 w-full overflow-hidden rounded-full bg-white/10">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-red-500 via-pink-500 to-yellow-400 transition-all duration-700 ease-out"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+
+        <div
+          key={animKey}
+          className={`relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 p-5 md:p-8 shadow-[0_20px_80px_rgba(0,0,0,0.65)] backdrop-blur-xl transition-all duration-300 ${
+            isTransitioning
+              ? "opacity-0 translate-y-4 scale-[0.985]"
+              : "opacity-100 translate-y-0 scale-100"
+          }`}
+        >
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(239,68,68,0.14),transparent_35%)]" />
+          <div className="relative z-10">
+            <div className="flex justify-center">
+              <div className="rounded-3xl border border-white/10 bg-black/40 p-3 shadow-2xl">
+                <img
+                  src={`https://flagcdn.com/w320/${currentQuestion.flag}.png`}
+                  alt={currentQuestion.question}
+                  className="h-40 w-auto rounded-2xl object-cover md:h-48"
+                />
+              </div>
+            </div>
+
+            <h2 className="mt-6 text-center text-2xl md:text-4xl font-black tracking-tight">
+              {currentQuestion.question}
+            </h2>
+
+            <div className="mt-8 grid gap-3">
+              {currentQuestion.options.map((o) => {
+                const isSelected = selectedAnswer === o;
+                const isCorrect = o === currentQuestion.answer;
+                const showResult = !!selectedAnswer;
+
+                let stateClasses =
+                  "border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20";
+
+                if (showResult && isCorrect) {
+                  stateClasses =
+                    "border-emerald-400 bg-emerald-500 text-black shadow-[0_0_25px_rgba(16,185,129,0.25)]";
+                } else if (showResult && isSelected && !isCorrect) {
+                  stateClasses =
+                    "border-red-400 bg-red-500 text-white shadow-[0_0_25px_rgba(239,68,68,0.25)]";
+                }
+
+                return (
+                  <button
+                    key={o}
+                    onClick={() => handleAnswer(o)}
+                    disabled={!!selectedAnswer}
+                    className={`rounded-2xl border px-5 py-4 text-left font-semibold transition-all duration-300 ${stateClasses} disabled:cursor-not-allowed ${
+                      !selectedAnswer ? "hover:scale-[1.01]" : ""
+                    }`}
+                  >
+                    <span className="flex items-center justify-between gap-4">
+                      <span>{o}</span>
+                      <span className="text-xs uppercase tracking-[0.25em] opacity-70">
+                        {showResult && isCorrect
+                          ? "Juste"
+                          : showResult && isSelected
+                          ? "Faux"
+                          : ""}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
 }
-
-// ── STYLES ──
-const pageWrap: React.CSSProperties = {
-  minHeight: "100vh",
-  background: "#0a0c10",
-  padding: "24px 16px 60px",
-  maxWidth: 520,
-  margin: "0 auto",
-  fontFamily: "'DM Sans', sans-serif",
-};
-
-const pageCentered: React.CSSProperties = {
-  minHeight: "100vh",
-  background: "#0a0c10",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  fontFamily: "'DM Sans', sans-serif",
-  color: "#f0ede6",
-};
-
-const card: React.CSSProperties = {
-  background: "#111420",
-  border: "1px solid #1e2130",
-  borderRadius: 20,
-  padding: "24px 20px",
-};
-
-const infoBox: React.CSSProperties = {
-  background: "#0d0f14",
-  border: "1px solid #1e2130",
-  borderRadius: 12,
-  padding: "16px",
-  textAlign: "center",
-};
-
-const btnBack: React.CSSProperties = {
-  background: "#111420",
-  border: "1px solid #1e2130",
-  borderRadius: 10,
-  color: "#8892a4",
-  padding: "12px 24px",
-  fontSize: 14,
-  cursor: "pointer",
-  fontFamily: "'DM Sans', sans-serif",
-};
-
-const css = `
-  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700;800&family=Share+Tech+Mono&display=swap');
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0a0c10; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-`;
