@@ -1,29 +1,27 @@
-
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+export const dynamic = "force-dynamic";
+
+import { useEffect, useRef, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-
-
-export default function TankArenaPage() {
-  const router      = useRouter();
+function TankArenaPage() {
+  const router       = useRouter();
   const searchParams = useSearchParams();
-  const iframeRef   = useRef<HTMLIFrameElement>(null);
+  const iframeRef    = useRef<HTMLIFrameElement>(null);
 
-  const duelId   = searchParams.get("duelId");
-  const duelRole = searchParams.get("role") as "a" | "b" | null;
+  const duelId    = searchParams.get("duelId");
+  const duelRole  = searchParams.get("role") as "a" | "b" | null;
   const isDuelMode = !!duelId && !!duelRole;
 
-  const [gameStarted, setGameStarted]     = useState(false);
-  const [gameOver, setGameOver]           = useState(false);
-  const [myScore, setMyScore]             = useState(0);
-  const [waiting, setWaiting]             = useState(false);
-  const [opponentDone, setOpponentDone]   = useState(false);
-  const [blobUrl, setBlobUrl]             = useState<string | null>(null);
+  const [gameStarted, setGameStarted]   = useState(false);
+  const [gameOver, setGameOver]         = useState(false);
+  const [myScore, setMyScore]           = useState(0);
+  const [waiting, setWaiting]           = useState(false);
+  const [opponentDone, setOpponentDone] = useState(false);
+  const [blobUrl, setBlobUrl]           = useState<string | null>(null);
 
-  // ── Générer le blob URL du jeu HTML avec postMessage injecté
   useEffect(() => {
     const gameHTML = getGameHTML(isDuelMode);
     const blob = new Blob([gameHTML], { type: "text/html" });
@@ -32,69 +30,35 @@ export default function TankArenaPage() {
     return () => URL.revokeObjectURL(url);
   }, [isDuelMode]);
 
-  // ── Écouter le score envoyé par le jeu via postMessage
   const handleFinish = useCallback(async (score: number) => {
     setMyScore(score);
     setGameOver(true);
-
     if (!isDuelMode || !duelId || !duelRole) return;
-
     const scoreCol = duelRole === "a" ? "score_a" : "score_b";
-
-    // Sauvegarder mon score
-    await supabase
-      .from("duels")
-      .update({ [scoreCol]: score })
-      .eq("id", duelId);
-
-    // Vérifier si l'adversaire a déjà fini
-    const { data: updated } = await supabase
-      .from("duels")
-      .select("*")
-      .eq("id", duelId)
-      .single();
-
+    await supabase.from("duels").update({ [scoreCol]: score }).eq("id", duelId);
+    const { data: updated } = await supabase.from("duels").select("*").eq("id", duelId).single();
     if (!updated) return;
-
     const oppScore = duelRole === "a" ? updated.score_b : updated.score_a;
-
     if (oppScore !== null) {
-      // Les deux ont fini → calculer le gagnant
       const { data: { user } } = await supabase.auth.getUser();
       const myId = user?.id;
-      const winnerId = score > oppScore
-        ? myId
-        : oppScore > score
-        ? (duelRole === "a" ? updated.player_b : updated.player_a)
-        : null;
-
-      await supabase
-        .from("duels")
-        .update({ status: "finished", winner: winnerId })
-        .eq("id", duelId);
-
+      const winnerId = score > oppScore ? myId : oppScore > score ? (duelRole === "a" ? updated.player_b : updated.player_a) : null;
+      await supabase.from("duels").update({ status: "finished", winner: winnerId }).eq("id", duelId);
       router.push(`/duel/${duelId}/play`);
     } else {
-      // Adversaire pas encore fini
       setWaiting(true);
     }
   }, [isDuelMode, duelId, duelRole, router]);
 
-  // ── Écouter les messages du jeu
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
-      if (e.data?.type === "TANK_GAME_OVER") {
-        handleFinish(e.data.score ?? 0);
-      }
-      if (e.data?.type === "TANK_STARTED") {
-        setGameStarted(true);
-      }
+      if (e.data?.type === "TANK_GAME_OVER") handleFinish(e.data.score ?? 0);
+      if (e.data?.type === "TANK_STARTED") setGameStarted(true);
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, [handleFinish]);
 
-  // ── Realtime : écouter si l'adversaire finit
   useEffect(() => {
     if (!isDuelMode || !duelId) return;
     const channel = supabase
@@ -105,31 +69,22 @@ export default function TankArenaPage() {
           const updated = payload.new as { score_a: number | null; score_b: number | null; status: string };
           const oppScore = duelRole === "a" ? updated.score_b : updated.score_a;
           if (oppScore !== null) setOpponentDone(true);
-          if (updated.status === "finished") {
-            router.push(`/duel/${duelId}/play`);
-          }
+          if (updated.status === "finished") router.push(`/duel/${duelId}/play`);
         }
-      )
-      .subscribe();
+      ).subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [isDuelMode, duelId, duelRole, router]);
 
-  // ── ÉCRAN D'ATTENTE
   if (waiting) {
     return (
       <main className="min-h-screen bg-[#05070c] text-white flex items-center justify-center px-5">
         <div className="text-center max-w-sm">
           <div className="w-20 h-20 mx-auto mb-8 rounded-full border-2 border-cyan-500/30 border-t-cyan-500 animate-spin" />
           <h2 className="text-2xl font-black mb-3">
-            Partie terminée !{" "}
-            <span style={{ color: "#50ffd0" }}>{myScore} pts</span>
+            Partie terminée ! <span style={{ color: "#50ffd0" }}>{myScore} pts</span>
           </h2>
-          <p className="text-white/40 text-sm mb-2">
-            En attente de ton adversaire...
-          </p>
-          <p className="text-white/20 text-xs">
-            Le résultat s&apos;affichera dès qu&apos;il aura terminé
-          </p>
+          <p className="text-white/40 text-sm mb-2">En attente de ton adversaire...</p>
+          <p className="text-white/20 text-xs">Le résultat s&apos;affichera dès qu&apos;il aura terminé</p>
           {opponentDone && (
             <p className="mt-4 text-sm animate-pulse" style={{ color: "#50ffd0" }}>
               L&apos;adversaire vient de finir ! Calcul du résultat...
@@ -140,31 +95,35 @@ export default function TankArenaPage() {
     );
   }
 
-  // ── JEU (iframe)
   return (
     <div className="fixed inset-0 bg-[#05070c]">
-      {/* Badge duel mode */}
       {isDuelMode && !gameStarted && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 px-4 py-2 rounded-full text-xs font-bold"
           style={{ background: "rgba(80,255,208,0.15)", border: "1px solid rgba(80,255,208,0.4)", color: "#50ffd0" }}>
           ⚔️ Mode Duel — Survis le plus longtemps possible !
         </div>
       )}
-
       {blobUrl && (
-        <iframe
-          ref={iframeRef}
-          src={blobUrl}
-          className="w-full h-full border-none"
-          allow="autoplay"
-          title="Tank Arena"
-        />
+        <iframe ref={iframeRef} src={blobUrl} className="w-full h-full border-none" allow="autoplay" title="Tank Arena" />
       )}
     </div>
   );
 }
 
-// ── HTML du jeu avec postMessage injecté pour envoyer le score
+// ── Export avec Suspense wrapper ──
+export default function TankArenaPageWrapper() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-[#05070c] text-white flex items-center justify-center">
+        <p style={{ color: "#50ffd0" }}>Chargement...</p>
+      </main>
+    }>
+      <TankArenaPage />
+    </Suspense>
+  );
+}
+
+// ── HTML du jeu — bug vies corrigé : 5 vies, perd 1 par tir ──
 function getGameHTML(isDuelMode: boolean): string {
   return `<!DOCTYPE html>
 <html lang="fr">
@@ -231,7 +190,6 @@ ${isDuelMode ? `<div class="duelBadge">⚔️ Mode Duel</div>` : ""}
   </div>
 </div>
 <script>
-// ── postMessage vers le parent Next.js
 function notifyParent(type, data) {
   try { window.parent.postMessage({ type, ...data }, '*'); } catch(e) {}
 }
@@ -260,7 +218,12 @@ let combo=0,comboTimer=0,maxCombo=0;
 let bullets=[],eBullets=[],enemies=[],powerUps=[],obstacles=[];
 let particles=[],tracks=[],smokeArr=[],decor=[],floatTxts=[],hitRings=[];
 let bossSpeech=null;
-const P={x:0,y:0,r:18,ang:-Math.PI/2,spin:1.82,spd:188,lives:50,inv:0,fireCd:0,fireRate:.42,burst:3,burstRegen:0,bPower:1,multiAmmo:0,shield:0,boost:0,type:'classic',color:'#4effd1',accent:'#d9fff7',weapon:'canon',wAmmo:0,recoil:0,trackT:0};
+
+// ── PLAYER — 5 vies, perd 1 par tir ──
+const P={x:0,y:0,r:18,ang:-Math.PI/2,spin:1.82,spd:188,
+  lives:5,       // ← 5 vies (pas 50)
+  inv:0,fireCd:0,fireRate:.42,burst:3,burstRegen:0,bPower:1,multiAmmo:0,shield:0,boost:0,type:'classic',color:'#4effd1',accent:'#d9fff7',weapon:'canon',wAmmo:0,recoil:0,trackT:0};
+
 function cmap(){return MAPS[selMap];}
 function hasBoss(){return enemies.some(e=>e.isBoss);}
 let AC=null,musicTimer=null,musicOn=false;
@@ -280,7 +243,13 @@ renderLeaders();
 function saveLeader(){leaders.push({score,wave,date:Date.now()});leaders.sort((a,b)=>b.score-a.score);leaders=leaders.slice(0,5);localStorage.setItem('mtLeaders',JSON.stringify(leaders));renderLeaders();}
 function applyTheme(){const m=cmap();wrap.style.background=\`linear-gradient(\${m.grid} 1px,transparent 1px),linear-gradient(90deg,\${m.grid} 1px,transparent 1px),radial-gradient(circle at center,\${toRgba(m.glow,.08)},transparent 45%),\${m.base}\`;wrap.style.backgroundSize='34px 34px,34px 34px,cover,cover';}
 applyTheme();
-function resetGame(){selMap=Math.floor(Math.random()*MAPS.length);const s=SKINS[selSkin];Object.assign(P,{x:W/2,y:H/2,ang:-Math.PI/2,lives:50,inv:0,shield:0,boost:0,fireCd:0,burst:3,burstRegen:0,bPower:1,multiAmmo:0,weapon:'canon',wAmmo:0,recoil:0,trackT:0,color:s.color,accent:s.accent,type:s.type,spd:s.spd,fireRate:s.fr});rotDir=1;score=0;wave=1;bullets=[];eBullets=[];enemies=[];powerUps=[];particles=[];tracks=[];smokeArr=[];floatTxts=[];hitRings=[];bossSpeech=null;combo=0;comboTimer=0;maxCombo=0;shake=0;slowMo=0;tScale=1;makeObs();makeDecor();spawnWave();updateHUD();updateWeaponHUD();applyTheme();}
+function resetGame(){
+  selMap=Math.floor(Math.random()*MAPS.length);
+  const s=SKINS[selSkin];
+  Object.assign(P,{x:W/2,y:H/2,ang:-Math.PI/2,
+    lives:5,  // ← reset à 5 vies
+    inv:0,shield:0,boost:0,fireCd:0,burst:3,burstRegen:0,bPower:1,multiAmmo:0,weapon:'canon',wAmmo:0,recoil:0,trackT:0,color:s.color,accent:s.accent,type:s.type,spd:s.spd,fireRate:s.fr});
+  rotDir=1;score=0;wave=1;bullets=[];eBullets=[];enemies=[];powerUps=[];particles=[];tracks=[];smokeArr=[];floatTxts=[];hitRings=[];bossSpeech=null;combo=0;comboTimer=0;maxCombo=0;shake=0;slowMo=0;tScale=1;makeObs();makeDecor();spawnWave();updateHUD();updateWeaponHUD();applyTheme();}
 function makeDecor(){decor=[];for(let i=0;i<65;i++){decor.push({x:rand(20,W-20),y:rand(70,H-20),r:rand(1,3),a:rand(.1,.45),d:rand(0,10)});}}
 function rectsOvlp(a,b,p=0){return a.x-p<b.x+b.w&&a.x+a.w+p>b.x&&a.y-p<b.y+b.h&&a.y+a.h+p>b.y;}
 function makeObs(){obstacles=[];const count=W<700?5:8;let tries=0;while(obstacles.length<count&&tries++<500){const o={x:rand(60,W-120),y:rand(105,H-175),w:rand(58,120),h:rand(40,92),radius:16};const cx=o.x+o.w/2,cy=o.y+o.h/2;if(Math.hypot(cx-W/2,cy-H/2)<180)continue;if(obstacles.some(p=>rectsOvlp(o,p,42)))continue;obstacles.push(o);}}
@@ -311,9 +280,29 @@ function updateEnemies(dt){for(const e of enemies){if(e.entering>0){e.entering-=
 function updateBullets(dt){for(let i=bullets.length-1;i>=0;i--){const b=bullets[i];b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;if(b.missile){b.ang=Math.atan2(b.vy,b.vx);b.trail.push({x:b.x,y:b.y,life:.25});if(b.trail.length>12)b.trail.shift();}if(b.x<-40||b.x>W+40||b.y<-40||b.y>H+40||b.life<=0||hitsObs(b)){if(b.missile)missileBoom(b.x,b.y);else{burst(b.x,b.y,'#d8fff7',5,1.5);sndHit();}bullets.splice(i,1);continue;}for(let j=enemies.length-1;j>=0;j--){const e=enemies[j];if(Math.hypot(b.x-e.x,b.y-e.y)<b.r+e.r){if(b.missile)missileBoom(b.x,b.y);else{e.hp-=b.dmg;sndHit();burst(b.x,b.y,e.color,14,3.5);hitRing(e.x,e.y,e.r,e.color);}bullets.splice(i,1);shake=b.missile?12:5;break;}}}}
 function missileBoom(x,y){sndExplode();burst(x,y,'#ff9b4d',46,6);for(const e of enemies){const d=Math.hypot(x-e.x,y-e.y);if(d<90){e.hp-=clamp(4.4-d/25,1,4.4);hitRing(e.x,e.y,e.r,e.color);}}shake=13;}
 function updateEBullets(dt){for(let i=eBullets.length-1;i>=0;i--){const b=eBullets[i];b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;if(b.x<-20||b.x>W+20||b.y<-20||b.y>H+20||b.life<=0||hitsObs(b)){burst(b.x,b.y,'#ff9dad',5,1.5);eBullets.splice(i,1);continue;}if(Math.hypot(b.x-P.x,b.y-P.y)<b.r+P.r){eBullets.splice(i,1);damagePlayer(b.dmg||1);}}}
-function damagePlayer(n){if(P.inv>0)return;if(P.shield>0){P.shield=Math.max(0,P.shield-1.5*n);sndHit();}else{P.lives-=n;P.inv=1.15;combo=0;sndExplode();}shake=10;burst(P.x,P.y,P.shield>0?'#7db4ff':'#ff5c7a',24,5);updateHUD();if(P.lives<=0)gameOver();}
+
+// ── damagePlayer corrigé : perd 1 vie entière par tir ──
+function damagePlayer(n){
+  if(P.inv>0)return;
+  if(P.shield>0){
+    P.shield=Math.max(0,P.shield-1.5*n);
+    sndHit();
+  } else {
+    P.lives=Math.max(0,P.lives-1);  // ← toujours -1 vie peu importe dmg
+    P.inv=1.15;
+    combo=0;
+    sndExplode();
+  }
+  shake=10;
+  burst(P.x,P.y,P.shield>0?'#7db4ff':'#ff5c7a',24,5);
+  updateHUD();
+  if(P.lives<=0)gameOver();
+}
+
 function killEnemy(i){const e=enemies[i],boss=e.isBoss;combo++;comboTimer=2.6;maxCombo=Math.max(maxCombo,combo);const base=boss?1000+wave*80:100+wave*15;const bonus=combo>1?Math.floor(base*Math.min(.75,combo*.08)):0;score+=base+bonus;slowMo=boss?.42:.16;sndExplode();burst(e.x,e.y,e.color,boss?70:30,boss?7:4.8);floatText(e.x,e.y-22,\`+\${base+bonus}\${combo>1?' COMBO x'+combo:''}\`,boss?'#ffcf4d':'#fff');spawnPower(e.x,e.y,boss);enemies.splice(i,1);updateHUD();}
-function updatePowers(dt){for(let i=powerUps.length-1;i>=0;i--){const p=powerUps[i];p.life-=dt;p.pulse+=dt*7;if(p.life<=0){powerUps.splice(i,1);continue;}if(Math.hypot(p.x-P.x,p.y-P.y)<p.r+P.r+4){if(p.kind==='life')P.lives=Math.min(50,P.lives+1);if(p.kind==='rapid')P.boost=7;if(p.kind==='shield')P.shield=7;if(p.kind==='multi'){P.bPower=3;P.multiAmmo=5;}if(p.kind==='missile')setWeapon('missile');sndPower();burst(p.x,p.y,p.color,30,5);powerUps.splice(i,1);updateHUD();updateWeaponHUD();}}}
+function updatePowers(dt){for(let i=powerUps.length-1;i>=0;i--){const p=powerUps[i];p.life-=dt;p.pulse+=dt*7;if(p.life<=0){powerUps.splice(i,1);continue;}if(Math.hypot(p.x-P.x,p.y-P.y)<p.r+P.r+4){
+  if(p.kind==='life')P.lives=Math.min(5,P.lives+1);  // ← max 5 vies
+  if(p.kind==='rapid')P.boost=7;if(p.kind==='shield')P.shield=7;if(p.kind==='multi'){P.bPower=3;P.multiAmmo=5;}if(p.kind==='missile')setWeapon('missile');sndPower();burst(p.x,p.y,p.color,30,5);powerUps.splice(i,1);updateHUD();updateWeaponHUD();}}}
 function updateFX(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.96;p.vy*=.96;p.life-=dt;if(p.life<=0)particles.splice(i,1);}for(let i=smokeArr.length-1;i>=0;i--){const s=smokeArr[i];s.x+=s.vx*dt;s.y+=s.vy*dt;s.vx*=.94;s.vy*=.94;s.r+=dt*18;s.life-=dt;if(s.life<=0)smokeArr.splice(i,1);}for(let i=tracks.length-1;i>=0;i--){tracks[i].life-=dt;if(tracks[i].life<=0)tracks.splice(i,1);}for(let i=floatTxts.length-1;i>=0;i--){const f=floatTxts[i];f.y+=f.vy*dt;f.life-=dt;if(f.life<=0)floatTxts.splice(i,1);}for(let i=hitRings.length-1;i>=0;i--){hitRings[i].life-=dt;if(hitRings[i].life<=0)hitRings.splice(i,1);}if(bossSpeech){bossSpeech.life-=dt;bossSpeech.y-=dt*6;if(bossSpeech.life<=0)bossSpeech=null;}}
 function draw(){const m=cmap();ctx.clearRect(0,0,W,H);ctx.save();if(shake>0)ctx.translate(rand(-shake,shake),rand(-shake,shake));drawMap(m);drawTracks();ctx.save();ctx.strokeStyle=toRgba(m.glow,.28);ctx.lineWidth=3;rr(10,55,W-20,H-70,26);ctx.stroke();ctx.restore();obstacles.forEach(drawObs);drawPowers();drawTank(P,true);enemies.forEach(e=>drawTank(e,false));drawBossSpeech();drawHitRings();drawBullets();drawSmoke();drawParticles();drawFloatTxts();ctx.restore();}
 function drawMap(m){ctx.save();for(const s of decor){ctx.globalAlpha=s.a;ctx.fillStyle=m.glow;ctx.beginPath();ctx.arc(s.x,s.y+Math.sin(performance.now()/900+s.d)*2,s.r,0,Math.PI*2);ctx.fill();}if(m.key==='lava'){ctx.globalAlpha=.18;ctx.strokeStyle='#ff4f32';ctx.lineWidth=2;for(let i=0;i<8;i++){ctx.beginPath();const y=90+i*80+Math.sin(performance.now()/500+i)*12;ctx.moveTo(0,y);for(let x=0;x<W;x+=60)ctx.lineTo(x,y+Math.sin(x/45+i)*12);ctx.stroke();}}if(m.key==='grass'){ctx.globalAlpha=.12;ctx.strokeStyle='#76ff52';for(let i=0;i<55;i++){const x=(i*83)%W,y=80+((i*47)%(H-100));ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+4,y-10);ctx.stroke();}}if(m.key==='ice'){ctx.globalAlpha=.08;ctx.strokeStyle='#dff8ff';for(let i=0;i<22;i++){const x=(i*113)%W,y=75+((i*67)%(H-95));ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+44,y+Math.sin(i)*8);ctx.stroke();}}ctx.restore();}
@@ -327,12 +316,19 @@ function drawSmoke(){ctx.save();for(const s of smokeArr){ctx.globalAlpha=clamp(s
 function drawParticles(){for(const p of particles){ctx.save();ctx.globalAlpha=Math.max(0,p.life/p.max);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();ctx.restore();}}
 function drawHitRings(){for(const h of hitRings){ctx.save();ctx.globalAlpha=clamp(h.life/h.max,0,1);ctx.strokeStyle=h.color;ctx.lineWidth=3;ctx.beginPath();ctx.arc(h.x,h.y,h.r*(1+(1-h.life/h.max)*.55),0,Math.PI*2);ctx.stroke();ctx.restore();}}
 function drawFloatTxts(){for(const f of floatTxts){ctx.save();ctx.globalAlpha=clamp(f.life/f.max,0,1);ctx.fillStyle=f.col;ctx.font='900 18px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(f.txt,f.x,f.y);ctx.restore();}}
-function updateHUD(){document.getElementById('lives').textContent='♥'.repeat(Math.max(0,Math.ceil(P.lives/10)));document.getElementById('score').textContent=score;document.getElementById('wave').textContent=wave;if(score>bestScore){bestScore=score;localStorage.setItem('mtBest',bestScore);document.getElementById('best').textContent=bestScore;}}
+
+// ── HUD vies : affiche exactement P.lives cœurs (max 5) ──
+function updateHUD(){
+  document.getElementById('lives').textContent='♥'.repeat(Math.max(0,P.lives));
+  document.getElementById('score').textContent=score;
+  document.getElementById('wave').textContent=wave;
+  if(score>bestScore){bestScore=score;localStorage.setItem('mtBest',bestScore);document.getElementById('best').textContent=bestScore;}
+}
+
 function updateWeaponHUD(){const n={canon:\`Canon • \${P.burst}/3\`,missile:\`Missile x\${P.wAmmo} • \${P.burst}/3\`};document.getElementById('weaponName').textContent=n[P.weapon]||'Canon';}
 function updateReload(){const bar=document.getElementById('reloadBar');bar.style.width=\`\${clamp(P.burst/3,0,1)*100}%\`;bar.style.filter=P.burst>0?'brightness(1.25)':'brightness(.65)';}
 function gameOver(){
   running=false;holding=false;stopMusic();saveLeader();
-  // ── Envoyer le score au parent Next.js
   notifyParent('TANK_GAME_OVER', { score });
   const menu=document.getElementById('menu');
   menu.classList.remove('hidden');
