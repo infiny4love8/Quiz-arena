@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+export const dynamic = "force-dynamic";
+
+import { useEffect, useRef, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-
-export const dynamic = "force-dynamic";
 
 type Level = "normal" | "hard";
 type GameStatus = "menu" | "memorize" | "question" | "feedback" | "finished" | "waiting";
@@ -104,12 +104,10 @@ const LEVEL_CONFIG = {
   },
 };
 
-// ── Shuffle aléatoire normal (options)
 function shuffleArray<T>(array: T[]): T[] {
   return [...array].sort(() => Math.random() - 0.5);
 }
 
-// ── Shuffle déterministe avec seed (même résultat pour les deux joueurs en duel)
 function seededShuffle<T>(array: T[], seed: string): T[] {
   const arr = [...array];
   let s = 0;
@@ -153,11 +151,8 @@ function playSound(type: "start" | "tick" | "correct" | "wrong" | "finish") {
   oscillator.stop(audio.currentTime + 0.22);
 }
 
-// ── Construire un round — seedId optionnel pour le mode duel
 function buildRound(roundId: number, level: Level, seedId?: string): Round {
   const config = LEVEL_CONFIG[level];
-
-  // Seed = duelId + roundId → mêmes emojis pour les deux joueurs
   const sequence = seedId
     ? seededShuffle(EMOJIS, `${seedId}-${roundId}`).slice(0, config.sequenceSize)
     : shuffleArray(EMOJIS).slice(0, config.sequenceSize);
@@ -167,7 +162,6 @@ function buildRound(roundId: number, level: Level, seedId?: string): Round {
       ? ["position-of-emoji", "emoji-at-position", "count-category", "missing-emoji"]
       : ["position-of-emoji", "emoji-at-position", "count-category", "missing-emoji", "rebuild-order"];
 
-  // Type de question aussi déterministe en duel
   const typeIndex = seedId
     ? Math.abs(seedId.split("").reduce((a, c) => a + c.charCodeAt(0), roundId)) % possibleTypes.length
     : Math.floor(Math.random() * possibleTypes.length);
@@ -247,12 +241,11 @@ function buildRound(roundId: number, level: Level, seedId?: string): Round {
   };
 }
 
-// ── Composant principal ────────────────────────────────────
-export default function MemoryRushPage() {
+// ── Composant principal (interne) ──
+function MemoryRushPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Params duel (optionnels)
   const duelId   = searchParams.get("duelId");
   const duelRole = searchParams.get("role") as "a" | "b" | null;
   const isDuelMode = !!duelId && !!duelRole;
@@ -278,14 +271,12 @@ export default function MemoryRushPage() {
   const target      = config.target;
   const gameProgress = Math.min((score / target) * 100, 100);
 
-  // ── Init : charger meilleur score + Realtime si duel
   useEffect(() => {
     const saved = localStorage.getItem("training_score_memoryrush");
     if (saved) {
       try { setBestScore(JSON.parse(saved).points || 0); } catch {}
     }
 
-    // Mode duel : écouter si l'adversaire a fini
     if (isDuelMode && duelId) {
       channelRef.current = supabase
         .channel(`memory-duel-${duelId}`)
@@ -322,7 +313,6 @@ export default function MemoryRushPage() {
   }
 
   function startRound(nextRoundIndex: number) {
-    // Passer le duelId comme seed pour le mode duel
     const round = buildRound(nextRoundIndex + 1, level, duelId ?? undefined);
     setCurrentRound(round);
     setRoundIndex(nextRoundIndex);
@@ -351,10 +341,8 @@ export default function MemoryRushPage() {
 
   const finishGame = useCallback(async (finalScore: number, finalHistory: AnswerHistory[]) => {
     playSound("finish");
-
     const newBest = Math.max(bestScore, finalScore);
     setBestScore(newBest);
-
     localStorage.setItem("training_score_memoryrush", JSON.stringify({
       score: `${finalScore}/${target}`,
       points: finalScore,
@@ -363,52 +351,30 @@ export default function MemoryRushPage() {
       updatedAt: new Date().toISOString(),
     }));
 
-    // ── Mode duel : sauvegarder dans Supabase
     if (isDuelMode && duelId && duelRole) {
       const scoreCol = duelRole === "a" ? "score_a" : "score_b";
-
-      await supabase
-        .from("duels")
-        .update({ [scoreCol]: finalScore })
-        .eq("id", duelId);
-
-      // Vérifier si l'adversaire a déjà fini
-      const { data: updated } = await supabase
-        .from("duels")
-        .select("*")
-        .eq("id", duelId)
-        .single();
-
+      await supabase.from("duels").update({ [scoreCol]: finalScore }).eq("id", duelId);
+      const { data: updated } = await supabase.from("duels").select("*").eq("id", duelId).single();
       if (updated) {
         const oppScore = duelRole === "a" ? updated.score_b : updated.score_a;
-
         if (oppScore !== null) {
-          // Les deux ont fini → calculer le gagnant
           const { data: { user } } = await supabase.auth.getUser();
           const myId = user?.id;
           const winnerId = finalScore > oppScore
             ? myId
             : oppScore > finalScore
             ? (duelRole === "a" ? updated.player_b : updated.player_a)
-            : null; // match nul
-
-          await supabase
-            .from("duels")
-            .update({ status: "finished", winner: winnerId })
-            .eq("id", duelId);
-
+            : null;
+          await supabase.from("duels").update({ status: "finished", winner: winnerId }).eq("id", duelId);
           router.push(`/duel/${duelId}/play`);
           return;
         }
-
-        // Adversaire pas encore fini → écran d'attente
         setStatus("waiting");
         setHistory(finalHistory);
         return;
       }
     }
 
-    // Mode solo
     setStatus("finished");
     setHistory(finalHistory);
   }, [bestScore, target, level, isDuelMode, duelId, duelRole, router]);
@@ -426,9 +392,7 @@ export default function MemoryRushPage() {
   function submitAnswer(answer: string) {
     if (!currentRound || status !== "question") return;
     const isCorrect = answer === currentRound.answer;
-    const gainedPoints = isCorrect
-      ? answerTimeLeft >= 4 ? 12 : 10
-      : config.wrongPenalty;
+    const gainedPoints = isCorrect ? (answerTimeLeft >= 4 ? 12 : 10) : config.wrongPenalty;
     const nextScore = Math.max(0, score + gainedPoints);
     const newHistoryItem: AnswerHistory = {
       round: roundIndex + 1,
@@ -566,7 +530,7 @@ export default function MemoryRushPage() {
         </section>
       )}
 
-      {/* ── ATTENTE ADVERSAIRE (mode duel) ── */}
+      {/* ── ATTENTE ADVERSAIRE ── */}
       {status === "waiting" && (
         <section className="relative z-10 flex min-h-[calc(100vh-88px)] items-center justify-center px-5">
           <div className="text-center max-w-sm">
@@ -617,7 +581,6 @@ export default function MemoryRushPage() {
           <div className="relative">
             <div className="absolute inset-0 rounded-[2rem] bg-red-500/20 blur-2xl" />
             <div className="relative min-h-[540px] rounded-[2rem] border border-red-400/20 bg-zinc-950 p-6 text-center shadow-2xl md:p-10">
-
               {status === "memorize" && (
                 <div>
                   <p className="font-bold text-red-400">Mémorise la séquence</p>
@@ -699,7 +662,7 @@ export default function MemoryRushPage() {
         </section>
       )}
 
-      {/* ── RÉSULTAT SOLO ── */}
+      {/* ── RÉSULTAT ── */}
       {status === "finished" && (
         <section className="relative z-10 mx-auto flex min-h-[calc(100vh-88px)] max-w-4xl items-center justify-center px-5 py-12">
           <div className="w-full rounded-[2rem] border border-red-400/20 bg-zinc-950 p-6 text-center shadow-2xl md:p-10">
@@ -745,5 +708,18 @@ export default function MemoryRushPage() {
         </section>
       )}
     </main>
+  );
+}
+
+// ── Export avec Suspense wrapper ──
+export default function MemoryRushPageWrapper() {
+  return (
+    <Suspense fallback={
+      <main className="flex min-h-screen items-center justify-center bg-black text-white">
+        <p className="text-red-400">Chargement...</p>
+      </main>
+    }>
+      <MemoryRushPage />
+    </Suspense>
   );
 }
