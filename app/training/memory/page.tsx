@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
+export const dynamic = "force-dynamic";
+
 type Level = "normal" | "hard";
 type GameStatus = "menu" | "memorize" | "question" | "feedback" | "finished" | "waiting";
 
