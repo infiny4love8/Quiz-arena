@@ -42,14 +42,7 @@ export default function TrainingPage() {
         score: "0/10",
         points: 0,
         played: false,
-      },
-      {
-        theme: "dames",
-        label: "Jeu de Dames",
-        score: "0/10",
-        points: 0,
-        played: false,
-      },
+      }
     ];
 
     const savedScores = defaultScores.map((item) => {
