@@ -124,7 +124,7 @@ export default function DepotPage() {
               2. Envoie {montant.toLocaleString()} GDS sur MonCash
             </p>
             <p style={{ margin: 0, fontSize: 13, color: "#8892a4" }}>
-              Numéro : <strong style={{ color: "#f59e0b", letterSpacing: "0.05em" }}>+509 XX XX XX XX</strong>
+              Numéro : <strong style={{ color: "#f59e0b", letterSpacing: "0.05em" }}>+509 38998073</strong>
             </p>
             <p style={{ margin: "6px 0 0", fontSize: 12, color: "#4a5568" }}>
               Garde ton screenshot après le paiement.

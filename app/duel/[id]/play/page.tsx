@@ -386,7 +386,7 @@ export default function DuelPlayPage() {
           )}
 
           <div className="flex flex-col gap-3">
-            <button onClick={() => router.push("/duel/challenge")}
+            <button onClick={() => router.push("/duel/negotiate")}
               className="w-full rounded-2xl bg-orange-500 py-4 font-black text-black text-lg hover:bg-orange-400 transition-all hover:scale-[1.01] active:scale-[0.99]">
               Nouveau duel ⚔️
             </button>
