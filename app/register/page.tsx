@@ -234,11 +234,15 @@ export default function RegisterPage() {
                     </svg>
                     <div>
                       <p className="mb-1 text-sm font-semibold text-white">
-                        Confirme ton adresse email
+                        Quiz-Arena
                       </p>
                       <p className="text-[13px] leading-relaxed text-zinc-400">
-                        On t&apos;a envoyé un lien de confirmation. Clique dessus
-                        pour activer ton compte et commencer à gagner des coins.
+                        Merci d’avoir choisi Quiz Arena !
+Amusez-vous tout en gagnant des pièces et des récompenses.
+
+Défiez vos amis, participez à des tournois épiques et grimpez au sommet du classement.
+
+Êtes-vous prêt à devenir le champion de l’arène ?
                       </p>
                     </div>
                   </div>
