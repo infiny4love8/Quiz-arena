@@ -343,7 +343,7 @@ export default function DuelPage() {
                     }}
                   >
                     {[
-                      { val: "90s", label: "pour choisir" },
+                      { val: "90seconde", label: "pour choisir" },
                       { val: "50", label: "coins minimum" },
                       { val: "90%", label: "du pot au gagnant" },
                     ].map((s) => (
