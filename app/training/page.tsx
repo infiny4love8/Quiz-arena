@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 type TrainingScore = {
   theme: string;
@@ -12,53 +12,28 @@ type TrainingScore = {
 
 export default function TrainingPage() {
   const [recentScores, setRecentScores] = useState<TrainingScore[]>([]);
-  const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
+  const [musicPlaying, setMusicPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     const bgMusic = new Audio("/sounds/training-bg.mp3");
     bgMusic.loop = true;
     bgMusic.volume = 0.2;
-    bgMusic.play().catch(() => {});
-    setAudio(bgMusic);
+    audioRef.current = bgMusic;
 
     const defaultScores: TrainingScore[] = [
-      {
-        theme: "flags",
-        label: "Quiz Drapeaux",
-        score: "0/10",
-        points: 0,
-        played: false,
-      },
-      {
-        theme: "memory",
-        label: "Mémoire",
-        score: "0/10",
-        points: 0,
-        played: false,
-      },
-      {
-        theme: "tankarena",
-        label: "TankArena",
-        score: "0/10",
-        points: 0,
-        played: false,
-      }
+      { theme: "flags",     label: "Quiz Drapeaux", score: "0/10", points: 0, played: false },
+      { theme: "memory",    label: "Mémoire",        score: "0/10", points: 0, played: false },
+      { theme: "cards",     label: "Trouver les paires", score: "0/10", points: 0, played: false },
+      { theme: "tankarena", label: "TankArena",      score: "0/10", points: 0, played: false },
     ];
 
     const savedScores = defaultScores.map((item) => {
       const saved = localStorage.getItem(`training_score_${item.theme}`);
-
       if (!saved) return item;
-
       try {
         const parsed = JSON.parse(saved);
-
-        return {
-          ...item,
-          score: parsed.score || "0/10",
-          points: parsed.points || 0,
-          played: true,
-        };
+        return { ...item, score: parsed.score || "0/10", points: parsed.points || 0, played: true };
       } catch {
         return item;
       }
@@ -71,14 +46,25 @@ export default function TrainingPage() {
     };
   }, []);
 
+  const toggleMusic = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (musicPlaying) {
+      audio.pause();
+      setMusicPlaying(false);
+    } else {
+      audio.play().catch(() => {});
+      setMusicPlaying(true);
+    }
+  };
+
   const themes = [
     {
       id: "flags",
       title: "Quiz Drapeaux",
       description: "Reconnais les drapeaux du monde entier.",
       difficulty: "Facile",
-      image:
-        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTqSl1xsDQw0huJ4yFYWTkXCH9E9JkmdfoJxA&s",
+      image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTqSl1xsDQw0huJ4yFYWTkXCH9E9JkmdfoJxA&s",
       accent: "from-blue-500 to-cyan-400",
     },
     {
@@ -86,8 +72,7 @@ export default function TrainingPage() {
       title: "Mémoire",
       description: "Teste ta concentration et ta mémoire.",
       difficulty: "Mental",
-      image:
-        "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200&auto=format&fit=crop",
+      image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200&auto=format&fit=crop",
       accent: "from-violet-500 to-fuchsia-500",
     },
     {
@@ -95,8 +80,7 @@ export default function TrainingPage() {
       title: "TankArena",
       description: "Détruis les ennemis et bats le boss.",
       difficulty: "Hardcore",
-      image:
-        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSv8QPF9WPUhGhg9-9HxOocOsu2F8uNAN3odQ&s",
+      image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSv8QPF9WPUhGhg9-9HxOocOsu2F8uNAN3odQ&s",
       accent: "from-orange-500 to-red-500",
     },
     {
@@ -104,20 +88,22 @@ export default function TrainingPage() {
       title: "Jeu de Dames",
       description: "Le classique stratégique intemporel.",
       difficulty: "Tactique",
-      image:
-        "https://le-palais-des-echecs.com/wp-content/uploads/2022/10/Jeu-de-dame.png",
+      image: "https://le-palais-des-echecs.com/wp-content/uploads/2022/10/Jeu-de-dame.png",
       accent: "from-yellow-500 to-amber-500",
+    },
+    {
+      id: "cards",
+      title: "Trouver les paires",
+      description: "Fun, style et simple.",
+      difficulty: "Mental",
+      image: "https://store-images.s-microsoft.com/image/apps.24863.14090654178473619.aa2706f7-9244-4d37-b59f-3f87f7589476.44b1110d-8322-4f98-8c36-7611764453ce?w=207",
+      accent: "from-pink-500 to-rose-400",
     },
   ];
 
   const bestScore = recentScores.reduce(
-    (best, current) =>
-      current.points > best.points ? current : best,
-    recentScores[0] || {
-      label: "Aucun",
-      score: "0/10",
-      points: 0,
-    }
+    (best, current) => (current.points > best.points ? current : best),
+    recentScores[0] || { label: "Aucun", score: "0/10", points: 0 }
   );
 
   return (
@@ -133,28 +119,30 @@ export default function TrainingPage() {
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <a href="/dashboard" className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center text-xl font-black shadow-lg">
-              Q
+              Z
             </div>
-
             <div>
-              <h1 className="text-2xl font-black tracking-tight">
-                QuizArena
-              </h1>
-
-              <p className="text-sm text-zinc-400">
-                Training Center
-              </p>
+              <h1 className="text-2xl font-black tracking-tight">Zonarena</h1>
+              <p className="text-sm text-zinc-400">Training Center</p>
             </div>
           </a>
 
           <div className="flex items-center gap-3">
+            {/* BOUTON MUSIQUE */}
+            <button
+              onClick={toggleMusic}
+              className="px-4 py-2.5 rounded-2xl border border-white/10 hover:border-white/30 hover:bg-white/5 transition-all duration-300 text-sm font-semibold"
+              title={musicPlaying ? "Couper la musique" : "Lancer la musique"}
+            >
+              {musicPlaying ? "🔊" : "🔇"}
+            </button>
+
             <a
               href="/dashboard"
               className="px-5 py-2.5 rounded-2xl border border-white/10 hover:border-white/30 hover:bg-white/5 transition-all duration-300 text-sm font-semibold"
             >
               Dashboard
             </a>
-
             <a
               href="/tournaments"
               className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 text-black font-black hover:scale-105 transition-all duration-300 shadow-xl"
@@ -171,17 +159,14 @@ export default function TrainingPage() {
           <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-500/20 bg-red-500/10 text-red-300 font-semibold mb-8">
             ⚡ Entraînement Gaming
           </div>
-
           <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-none mb-8">
             Entre dans
             <span className="block bg-gradient-to-r from-red-500 via-orange-400 to-yellow-300 bg-clip-text text-transparent">
               l'Arène
             </span>
           </h1>
-
           <p className="text-zinc-400 text-lg md:text-xl leading-relaxed max-w-3xl mx-auto">
-            Progresse sur plusieurs jeux, améliore ton score
-            et prépare-toi pour les tournois compétitifs.
+            Progresse sur plusieurs jeux, améliore ton score et prépare-toi pour les tournois compétitifs.
           </p>
         </div>
       </section>
@@ -192,34 +177,19 @@ export default function TrainingPage() {
           {/* BEST SCORE */}
           <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-white/5 backdrop-blur-xl p-8">
             <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-orange-500/5" />
-
             <div className="relative z-10">
-              <p className="text-zinc-400 mb-3 font-medium">
-                🔥 Meilleur Score
-              </p>
-
-              <h2 className="text-4xl font-black mb-8">
-                {bestScore.label}
-              </h2>
-
+              <p className="text-zinc-400 mb-3 font-medium">🔥 Meilleur Score</p>
+              <h2 className="text-4xl font-black mb-8">{bestScore.label}</h2>
               <div className="rounded-3xl bg-gradient-to-r from-red-500 to-orange-500 p-8 text-black shadow-2xl">
-                <div className="text-6xl font-black mb-3">
-                  {bestScore.score}
-                </div>
-
-                <div className="text-2xl font-black">
-                  {bestScore.points} pts
-                </div>
+                <div className="text-6xl font-black mb-3">{bestScore.score}</div>
+                <div className="text-2xl font-black">{bestScore.points} pts</div>
               </div>
             </div>
           </div>
 
           {/* HISTORY */}
           <div className="rounded-[32px] border border-white/10 bg-white/5 backdrop-blur-xl p-8">
-            <h3 className="text-3xl font-black mb-8">
-              📈 Historique
-            </h3>
-
+            <h3 className="text-3xl font-black mb-8">📈 Historique</h3>
             <div className="space-y-4">
               {recentScores.map((item) => (
                 <div
@@ -227,25 +197,14 @@ export default function TrainingPage() {
                   className="flex items-center justify-between rounded-2xl border border-white/5 bg-black/20 px-5 py-4 hover:border-white/20 transition-all duration-300"
                 >
                   <div>
-                    <p className="font-bold text-lg">
-                      {item.label}
-                    </p>
-
+                    <p className="font-bold text-lg">{item.label}</p>
                     <p className="text-zinc-500 text-sm">
-                      {item.played
-                        ? item.score
-                        : "Pas encore joué"}
+                      {item.played ? item.score : "Pas encore joué"}
                     </p>
                   </div>
-
                   <div className="text-right">
-                    <p className="text-green-400 font-black text-xl">
-                      {item.points}
-                    </p>
-
-                    <p className="text-zinc-500 text-sm">
-                      points
-                    </p>
+                    <p className="text-green-400 font-black text-xl">{item.points}</p>
+                    <p className="text-zinc-500 text-sm">points</p>
                   </div>
                 </div>
               ))}
@@ -258,15 +217,9 @@ export default function TrainingPage() {
       <section className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div>
-            <h2 className="text-4xl md:text-5xl font-black mb-4">
-              Choisis ton jeu
-            </h2>
-
-            <p className="text-zinc-400 text-lg">
-              Lance une partie et améliore ton classement.
-            </p>
+            <h2 className="text-4xl md:text-5xl font-black mb-4">Choisis ton jeu</h2>
+            <p className="text-zinc-400 text-lg">Lance une partie et améliore ton classement.</p>
           </div>
-
           <a
             href="/leaderboard"
             className="w-fit px-7 py-4 rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 text-black font-black shadow-xl hover:scale-105 transition-all duration-300"
@@ -280,10 +233,7 @@ export default function TrainingPage() {
       <section className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {themes.map((theme, index) => {
-            const currentScore = recentScores.find(
-              (s) => s.theme === theme.id
-            );
-
+            const currentScore = recentScores.find((s) => s.theme === theme.id);
             return (
               <a
                 key={theme.id}
@@ -296,19 +246,15 @@ export default function TrainingPage() {
                     src={theme.image}
                     alt={theme.title}
                     className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src =
+                        "https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=1200&auto=format&fit=crop";
+                    }}
                   />
-
-                  {/* OVERLAY */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-
-                  {/* DIFFICULTY */}
-                  <div
-                    className={`absolute top-4 left-4 bg-gradient-to-r ${theme.accent} px-4 py-2 rounded-full text-sm font-black shadow-lg`}
-                  >
+                  <div className={`absolute top-4 left-4 bg-gradient-to-r ${theme.accent} px-4 py-2 rounded-full text-sm font-black shadow-lg`}>
                     {theme.difficulty}
                   </div>
-
-                  {/* NUMBER */}
                   <div className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur-xl border border-white/10 flex items-center justify-center text-sm font-black">
                     0{index + 1}
                   </div>
@@ -317,50 +263,25 @@ export default function TrainingPage() {
                 {/* CONTENT */}
                 <div className="p-7">
                   <div className="mb-5">
-                    <h3 className="text-3xl font-black mb-3">
-                      {theme.title}
-                    </h3>
-
-                    <p className="text-zinc-400 leading-relaxed">
-                      {theme.description}
-                    </p>
+                    <h3 className="text-3xl font-black mb-3">{theme.title}</h3>
+                    <p className="text-zinc-400 leading-relaxed">{theme.description}</p>
                   </div>
-
-                  {/* STATS */}
                   <div className="flex items-center justify-between mb-7">
                     <div>
-                      <p className="text-zinc-500 text-sm mb-1">
-                        Score
-                      </p>
-
-                      <p className="text-2xl font-black">
-                        {currentScore?.score || "0/10"}
-                      </p>
+                      <p className="text-zinc-500 text-sm mb-1">Score</p>
+                      <p className="text-2xl font-black">{currentScore?.score || "0/10"}</p>
                     </div>
-
                     <div className="text-right">
-                      <p className="text-zinc-500 text-sm mb-1">
-                        Points
-                      </p>
-
-                      <p className="text-2xl font-black text-green-400">
-                        {currentScore?.points || 0}
-                      </p>
+                      <p className="text-zinc-500 text-sm mb-1">Points</p>
+                      <p className="text-2xl font-black text-green-400">{currentScore?.points || 0}</p>
                     </div>
                   </div>
-
-                  {/* BUTTON */}
-                  <div
-                    className={`w-full rounded-2xl bg-gradient-to-r ${theme.accent} py-4 text-center text-lg font-black shadow-xl transition-all duration-300 group-hover:scale-[1.02]`}
-                  >
+                  <div className={`w-full rounded-2xl bg-gradient-to-r ${theme.accent} py-4 text-center text-lg font-black shadow-xl transition-all duration-300 group-hover:scale-[1.02]`}>
                     JOUER MAINTENANT
                   </div>
                 </div>
 
-                {/* HOVER GLOW */}
-                <div
-                  className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 bg-gradient-to-br ${theme.accent}`}
-                />
+                <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 bg-gradient-to-br ${theme.accent}`} />
               </a>
             );
           })}
