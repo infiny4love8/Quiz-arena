@@ -14,10 +14,119 @@ type UserData = {
   cashback: number;
 };
 
+// ===== WELCOME MODAL =====
+function WelcomeModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.80)" }}
+    >
+      <div
+        className="relative w-full max-w-md rounded-[20px] p-6"
+        style={{
+          background: "#0a0a0f",
+          border: "1px solid rgba(250,204,21,0.35)",
+        }}
+      >
+        {/* Bouton fermer */}
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 flex h-7 w-7 items-center justify-center rounded-lg text-zinc-400 hover:text-white transition"
+          style={{ background: "rgba(255,255,255,0.06)", border: "0.5px solid rgba(255,255,255,0.12)" }}
+        >
+          ✕
+        </button>
+
+        {/* Header */}
+        <div className="mb-5 text-center">
+          <div className="text-4xl mb-2" style={{ display: "inline-block", animation: "zonarena-bounce 1.2s ease infinite" }}>
+            🎁
+          </div>
+          <h2 className="text-xl font-bold text-yellow-400">Bienvenue sur Zonarena</h2>
+          <div className="mx-auto mt-2 h-0.5 w-10 rounded bg-yellow-400 opacity-50" />
+        </div>
+
+        {/* Tickets offerts */}
+        <div
+          className="mb-4 rounded-xl px-4 py-3"
+          style={{ background: "rgba(250,204,21,0.07)", border: "0.5px solid rgba(250,204,21,0.2)" }}
+        >
+          <p className="text-sm text-white leading-relaxed">
+            🎉 Nous t&apos;offrons{" "}
+            <span className="font-semibold text-yellow-400">3 tickets découverte</span>{" "}
+            pour participer aux tournois sponsorisés du lancement.
+          </p>
+        </div>
+
+        {/* Infos */}
+        <div className="mb-5 flex flex-col gap-3">
+          <div className="flex items-start gap-3">
+            <span className="text-lg">🎫</span>
+            <p className="text-sm text-zinc-400 leading-relaxed">
+              Les <span className="text-white">tickets</span> servent à rejoindre les{" "}
+              <span className="text-yellow-400">tournois sponsorisés</span>.
+            </p>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="text-lg">🪙</span>
+            <p className="text-sm text-zinc-400 leading-relaxed">
+              Les <span className="text-white">coins</span> servent à rejoindre les{" "}
+              <span className="text-yellow-400">tournois Pro</span>. —{" "}
+              <span className="text-zinc-500">1 coin = 1 GDS</span>
+            </p>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="text-lg">🏆</span>
+            <p className="text-sm text-zinc-400 leading-relaxed">
+              Les tournois Pro arrivent bientôt — vous pourriez gagner tous les jours, monter au
+              classement et <span className="text-yellow-400">devenir le meilleur</span>.
+            </p>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="text-lg">💳</span>
+            <p className="text-sm text-zinc-400 leading-relaxed">
+              Tu peux acheter des tickets ou des coins dans la section{" "}
+              <span className="text-yellow-400">Coins / Tickets</span>.
+            </p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div
+          className="mb-4 pb-4 text-center"
+          style={{ borderTop: "0.5px solid rgba(255,255,255,0.08)", paddingTop: "14px" }}
+        >
+          <p className="text-xs text-zinc-600 leading-relaxed">
+            Merci d&apos;avoir choisi Zonarena.<br />
+            Amuse-toi, progresse et tente de gagner. 🚀
+          </p>
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full rounded-xl py-3 text-sm font-bold text-black transition hover:opacity-90"
+          style={{ background: "#facc15" }}
+        >
+          C&apos;est parti ! 🎮
+        </button>
+      </div>
+
+      <style>{`
+        @keyframes zonarena-bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-6px); }
+        }
+      `}</style>
+    </div>
+  );
+}
+// ===== FIN WELCOME MODAL =====
+
 export default function DashboardPage() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false); // ← AJOUT
   const router = useRouter();
 
   // 🔐 LOAD USER
@@ -47,6 +156,13 @@ export default function DashboardPage() {
 
       setUserData(data);
       console.log("👤 ID connecté:", session.user.id);
+
+      // ← AJOUT : affiche le modal si première connexion
+      const key = `zonarena_welcome_seen_${session.user.id}`;
+      if (!localStorage.getItem(key)) {
+        setShowWelcomeModal(true);
+      }
+
       setLoading(false);
     }
 
@@ -63,6 +179,15 @@ export default function DashboardPage() {
 
     return () => listener.subscription.unsubscribe();
   }, [router]);
+
+  // ← AJOUT : fermeture du modal + marque comme vu
+  const handleCloseWelcome = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      localStorage.setItem(`zonarena_welcome_seen_${session.user.id}`, "true");
+    }
+    setShowWelcomeModal(false);
+  };
 
   // 🔄 POLLING DUELS
   useEffect(() => {
@@ -110,6 +235,10 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(250,204,21,0.12),_transparent_35%),linear-gradient(to_bottom,_#09090b,_#000)] text-white">
+
+      {/* ← AJOUT : Modal de bienvenue */}
+      {showWelcomeModal && <WelcomeModal onClose={handleCloseWelcome} />}
+
       {/* Background */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute right-[-120px] top-[-120px] h-[360px] w-[360px] rounded-full bg-yellow-400/15 blur-3xl" />
@@ -144,9 +273,9 @@ export default function DashboardPage() {
             </div>
             <Link href="/" className="flex items-center gap-2 text-xl font-black text-yellow-400 mb-8">
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-yellow-400 text-black">
-                Q
+                Z
               </span>
-              QuizArena
+              Zonarena
             </Link>
 
             <div className="rounded-2xl border border-yellow-400/10 bg-black/30 p-4 mb-6">
@@ -159,13 +288,13 @@ export default function DashboardPage() {
                 Dashboard
               </Link>
               <Link href="/tournaments" className="block rounded-2xl px-4 py-3 text-zinc-300" onClick={() => setMobileMenuOpen(false)}>
-                Tournois
+                Tournois Pro
               </Link>
               <Link href="/tournamentsponsorise" className="block rounded-2xl px-4 py-3 text-zinc-300" onClick={() => setMobileMenuOpen(false)}>
                 Tournois Sponsorisé
               </Link>
               <Link href="/duel" className="block rounded-2xl px-4 py-3 text-zinc-300" onClick={() => setMobileMenuOpen(false)}>
-                Duel 1v1
+                Duel 1 VS 1
               </Link>
               <Link href="/training" className="block rounded-2xl px-4 py-3 text-zinc-300" onClick={() => setMobileMenuOpen(false)}>
                 Entrainement
@@ -174,7 +303,7 @@ export default function DashboardPage() {
                 Retrait
               </Link>
               <Link href="/depot" className="block rounded-2xl px-4 py-3 text-zinc-300" onClick={() => setMobileMenuOpen(false)}>
-                Dépôt
+                Coins/Tickets
               </Link>
               <Link href="/support" className="block rounded-2xl px-4 py-3 text-zinc-300" onClick={() => setMobileMenuOpen(false)}>
                 Support
@@ -198,9 +327,9 @@ export default function DashboardPage() {
       <aside className="fixed left-0 top-0 hidden h-screen w-72 border-r border-yellow-400/10 bg-zinc-950/90 backdrop-blur-xl p-5 lg:block">
         <Link href="/" className="flex items-center gap-2 text-xl font-black text-yellow-400">
           <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-yellow-400 text-black">
-            Q
+            Z
           </span>
-          QuizArena
+          Zonarena
         </Link>
 
         <div className="mt-6 rounded-2xl border border-yellow-400/10 bg-black/30 p-4">

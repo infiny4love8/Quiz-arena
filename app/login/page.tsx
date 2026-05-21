@@ -53,9 +53,9 @@ export default function LoginPage() {
         <header className="border-b border-yellow-400/20 px-5 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 text-lg font-black text-yellow-400">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-yellow-400 text-black font-black text-base">
-              Q
+              Z
             </span>
-            QuizArena
+            Zonarena
           </Link>
           <Link
             href="/register"
@@ -103,7 +103,7 @@ export default function LoginPage() {
 
               <h1 className="text-2xl font-black text-yellow-400">Connexion</h1>
               <p className="mt-1 mb-6 text-sm text-zinc-500">
-                Content de te revoir sur QuizArena
+                Content de te revoir sur Zonarena
               </p>
 
               {error && (

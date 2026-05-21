@@ -80,9 +80,9 @@ export default function RegisterPage() {
         <header className="border-b border-yellow-400/20 px-5 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 text-lg font-black text-yellow-400">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-yellow-400 text-black font-black text-base">
-              Q
+              Z
             </span>
-            QuizArena
+            Zonarena
           </Link>
           <Link
             href="/login"
@@ -211,7 +211,7 @@ export default function RegisterPage() {
                   </h2>
                   <p className="mb-6 text-sm leading-relaxed text-zinc-500">
                     Bienvenue sur{" "}
-                    <span className="font-semibold text-yellow-400">QuizArena</span> !
+                    <span className="font-semibold text-yellow-400">Zonarena</span> !
                     <br />
                     Il ne reste plus qu&apos;une étape.
                   </p>
@@ -237,7 +237,7 @@ export default function RegisterPage() {
                         Quiz-Arena
                       </p>
                       <p className="text-[13px] leading-relaxed text-zinc-400">
-                        Merci d’avoir choisi Quiz Arena !
+                        Merci d’avoir choisi Zonarena !
 Amusez-vous tout en gagnant des pièces et des récompenses.
 
 Défiez vos amis, participez à des tournois épiques et grimpez au sommet du classement.
