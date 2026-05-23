@@ -42,7 +42,7 @@ export default function SupportPage() {
     setError("");
     setLoading(true);
 
-    const finalMessage = `Bonjour QuizArena 👋
+    const finalMessage = `Hello Zonarena 👋
 
 Nom: ${form.fullName}
 WhatsApp: ${form.whatsappNumber}
@@ -73,7 +73,7 @@ ${form.message}`;
       <div className="w-full max-w-2xl rounded-3xl border border-yellow-400/20 bg-zinc-950 p-8 shadow-2xl">
         
         <h1 className="text-3xl font-black">
-          Support <span className="text-yellow-400">QuizArena</span>
+          Support <span className="text-yellow-400">Zonarena</span>
         </h1>
 
         <p className="mt-2 text-zinc-400 text-sm">

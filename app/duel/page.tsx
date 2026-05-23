@@ -33,12 +33,12 @@ export default function DuelPage() {
     {
       number: "01",
       title: "Tu lances le défi",
-      desc: "Clique sur le bouton, entre l'email de ton adversaire. Notification instantanée.",
+      desc: "Clique sur le bouton, entre le nom de ton adversaire. Notification instantanée.",
     },
     {
       number: "02",
       title: "Il accepte",
-      desc: "Vous choisissez le thème ensemble: Drapeaux, Marques ou Films.",
+      desc: "Vous choisissez le thème ensemble: Drapeaux, memoire, tankarena.",
     },
     {
       number: "03",
@@ -344,8 +344,8 @@ export default function DuelPage() {
                   >
                     {[
                       { val: "90seconde", label: "pour choisir" },
-                      { val: "50", label: "coins minimum" },
-                      { val: "90%", label: "du pot au gagnant" },
+                      { val: "50", label: "coins minimum pour les paries" },
+                      { val: "0", label: "Ou jouer sans pariez" },
                     ].map((s) => (
                       <div
                         key={s.val}
