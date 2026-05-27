@@ -342,7 +342,7 @@ export default function DashboardPage() {
           <Link href="/dashboard" className="block rounded-2xl bg-yellow-400 px-4 py-3 font-bold text-black shadow-[0_0_0_1px_rgba(250,204,21,0.25)]">
             Dashboard
           </Link>
-          <Link href="/tournaments" className="block rounded-2xl px-4 py-3 text-zinc-300 transition hover:bg-white/5 hover:text-yellow-400">
+          <Link href="/tournaments/pro" className="block rounded-2xl px-4 py-3 text-zinc-300 transition hover:bg-white/5 hover:text-yellow-400">
             Tournois
           </Link>
           <Link href="/tournamentsponsorise" className="block rounded-2xl px-4 py-3 text-zinc-300 transition hover:bg-white/5 hover:text-yellow-400">

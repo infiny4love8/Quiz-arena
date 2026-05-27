@@ -81,11 +81,11 @@ export default function HomePage() {
               </div>
               <div className="space-y-2">
                 {[
-                  { name: "Kev", score: "920 pts", rank: "1", top: true },
-                  { name: "Mika", score: "870 pts", rank: "2", top: false },
-                  { name: "Sarah", score: "810 pts", rank: "3", top: false },
-                  { name: "Jay", score: "760 pts", rank: "4", top: false },
-                  { name: "Rony", score: "690 pts", rank: "5", top: false },
+                  { name: "Nidia", score: "920 pts", rank: "1", top: true },
+                  { name: "Lauradieu", score: "870 pts", rank: "2", top: false },
+                  { name: "Schneider", score: "810 pts", rank: "3", top: false },
+                  { name: "Jonathan", score: "760 pts", rank: "4", top: false },
+                  { name: "Jean", score: "690 pts", rank: "5", top: false },
                 ].map((p) => (
                   <div key={p.rank} className={`flex items-center justify-between rounded-xl border px-3 py-2.5 ${p.top ? "border-yellow-400/40 bg-zinc-950" : "border-zinc-800 bg-zinc-950"}`}>
                     <div className="flex items-center gap-2.5">
