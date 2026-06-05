@@ -217,13 +217,13 @@ function MemoryRushPage() {
             const updated = payload.new as { score_a: number | null; score_b: number | null; status: string };
             const oppScore = duelRole === "a" ? updated.score_b : updated.score_a;
             if (oppScore !== null) setOpponentDone(true);
+            // ✅ FIX : on redirige vers play uniquement si "finished",
+            // pas si "playing" (évite la boucle infinie)
             if (updated.status === "finished") router.push(`/duel/${duelId}/play`);
           }
         ).subscribe();
-    }
 
-    // ── BUG 2 FIX : en mode duel, sauter le menu et lancer directement
-    if (isDuelMode) {
+      // Lancer directement le jeu en mode duel sans passer par le menu
       setTimeout(() => startGame(), 100);
     }
 
@@ -302,9 +302,9 @@ function MemoryRushPage() {
 
           await supabase.from("duels").update({ status: "finished", winner: winnerId }).eq("id", duelId);
 
-          // ── BUG 1 FIX : transférer les coins si pari
+          // ✅ FIX BUG 1 : 100% des gains au lieu de 90%
           if (updated.bet_a && updated.bet_b && updated.bet_confirmed_a && updated.bet_confirmed_b && winnerId) {
-            const gain = Math.floor((updated.bet_a + updated.bet_b) * 0.9);
+            const gain = updated.bet_a + updated.bet_b;
             await supabase.rpc("transfer_bet_coins", {
               winner_id: winnerId,
               amount: gain,
@@ -315,10 +315,12 @@ function MemoryRushPage() {
             });
           }
 
+          // ✅ FIX BUG 2 : retour vers play qui affiche le résultat
+          // play détectera status="finished" et n'essaiera pas de rediriger vers memory
           router.push(`/duel/${duelId}/play`);
           return;
         }
-        // Adversaire pas encore fini
+        // Adversaire pas encore fini → attendre
         setStatus("waiting");
         setHistory(finalHistory);
         return;

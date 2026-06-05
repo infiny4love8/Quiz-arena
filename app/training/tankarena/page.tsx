@@ -71,7 +71,7 @@ function TankArenaPage() {
         updated.bet_confirmed_a && updated.bet_confirmed_b &&
         winnerId
       ) {
-        const gain = Math.floor((updated.bet_a + updated.bet_b) * 0.9);
+        const gain = updated.bet_a + updated.bet_b;
         await supabase.rpc("transfer_bet_coins", {
           winner_id: winnerId,
           amount: gain,

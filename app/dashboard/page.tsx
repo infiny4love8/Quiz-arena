@@ -53,7 +53,7 @@ function WelcomeModal({ onClose }: { onClose: () => void }) {
         >
           <p className="text-sm text-white leading-relaxed">
             🎉 Nous t&apos;offrons{" "}
-            <span className="font-semibold text-yellow-400">3 tickets découverte</span>{" "}
+            <span className="font-semibold text-yellow-400">3 tickets gratuit</span>{" "}
             pour participer aux tournois sponsorisés du lancement.
           </p>
         </div>
@@ -380,9 +380,9 @@ export default function DashboardPage() {
       <section className="pb-24 pt-6 lg:ml-72 p-4 sm:p-6">
         {/* Welcome */}
         <div className="rounded-3xl border border-yellow-400/10 bg-black/30 p-5 sm:p-6 backdrop-blur-xl">
-          <p className="text-xs uppercase tracking-[0.3em] text-yellow-400/70">Bienvenue</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-yellow-400/70">Bienvenue sur ton espace</p>
           <h1 className="mt-2 text-2xl sm:text-3xl font-black text-white">
-            Salut, <span className="text-yellow-400">{userData.full_name}</span> 👋
+            Hello, <span className="text-yellow-400">{userData.full_name}</span> 👋
           </h1>
           <p className="mt-2 max-w-2xl text-sm sm:text-base text-zinc-400">
             Gère tes coins, tes tickets et ton activité.

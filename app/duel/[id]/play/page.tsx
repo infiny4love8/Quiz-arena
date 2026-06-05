@@ -133,17 +133,77 @@ export default function DuelPlayPage() {
       if (me) setMyName(me.full_name);
       if (opp) setOpponentName(opp.full_name);
 
-      // ── ROUTING PAR THÈME
       const theme = duelData.theme ?? "drapeaux";
 
+      // ✅ FIX BUG 2 MEMOIRE : on ne redirige que si ce joueur n'a pas encore soumis son score
       if (theme === "memoire") {
-        setPhase("redirecting");
-        router.push(`/training/memory?duelId=${duelId}&role=${role}`);
+        const myScore = role === "a" ? duelData.score_a : duelData.score_b;
+        if (myScore === null) {
+          // Pas encore joué → envoyer vers memory
+          setPhase("redirecting");
+          router.push(`/training/memory?duelId=${duelId}&role=${role}`);
+          return;
+        }
+        // Déjà joué → afficher résultat ou attendre
+        if (duelData.status === "finished") {
+          const ms = role === "a" ? (duelData.score_a ?? 0) : (duelData.score_b ?? 0);
+          const os = role === "a" ? (duelData.score_b ?? 0) : (duelData.score_a ?? 0);
+          setResultData({ myScore: ms, opponentScore: os, winner: duelData.winner });
+          setPhase("result");
+          return;
+        }
+        setPhase("waiting");
+        // Souscrire pour recevoir le "finished" quand l'adversaire termine
+        channelRef.current = supabase
+          .channel(`play-${duelId}`)
+          .on("postgres_changes",
+            { event: "UPDATE", schema: "public", table: "duels", filter: `id=eq.${duelId}` },
+            (payload) => {
+              const updated = payload.new as DuelData;
+              if (updated.status === "finished") {
+                const ms = role === "a" ? (updated.score_a ?? 0) : (updated.score_b ?? 0);
+                const os = role === "a" ? (updated.score_b ?? 0) : (updated.score_a ?? 0);
+                setResultData({ myScore: ms, opponentScore: os, winner: updated.winner });
+                setPhase("result");
+              }
+            }
+          ).subscribe();
         return;
       }
+
+      // ✅ FIX BUG 2 TANKARENA : idem, on ne redirige que si score pas encore soumis
       if (theme === "tankarena") {
-        setPhase("redirecting");
-        router.push(`/training/tankarena?duelId=${duelId}&role=${role}`);
+        const myScore = role === "a" ? duelData.score_a : duelData.score_b;
+        if (myScore === null) {
+          // Pas encore joué → envoyer vers tankarena
+          setPhase("redirecting");
+          router.push(`/training/tankarena?duelId=${duelId}&role=${role}`);
+          return;
+        }
+        // Déjà joué → afficher résultat ou attendre
+        if (duelData.status === "finished") {
+          const ms = role === "a" ? (duelData.score_a ?? 0) : (duelData.score_b ?? 0);
+          const os = role === "a" ? (duelData.score_b ?? 0) : (duelData.score_a ?? 0);
+          setResultData({ myScore: ms, opponentScore: os, winner: duelData.winner });
+          setPhase("result");
+          return;
+        }
+        setPhase("waiting");
+        // Souscrire pour recevoir le "finished" quand l'adversaire termine
+        channelRef.current = supabase
+          .channel(`play-${duelId}`)
+          .on("postgres_changes",
+            { event: "UPDATE", schema: "public", table: "duels", filter: `id=eq.${duelId}` },
+            (payload) => {
+              const updated = payload.new as DuelData;
+              if (updated.status === "finished") {
+                const ms = role === "a" ? (updated.score_a ?? 0) : (updated.score_b ?? 0);
+                const os = role === "a" ? (updated.score_b ?? 0) : (updated.score_a ?? 0);
+                setResultData({ myScore: ms, opponentScore: os, winner: updated.winner });
+                setPhase("result");
+              }
+            }
+          ).subscribe();
         return;
       }
 
@@ -187,6 +247,18 @@ export default function DuelPlayPage() {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [duelId, router]);
+
+  // ✅ FIX BUG 3 : fermer le channel et prefetch dès que le résultat arrive
+  useEffect(() => {
+    if (phase === "result") {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+      router.prefetch("/dashboard");
+      router.prefetch("/duel/negotiate");
+    }
+  }, [phase, router]);
 
   useEffect(() => {
     if (phase !== "countdown") return;
@@ -245,8 +317,9 @@ export default function DuelPlayPage() {
       const winnerId = myScore > oppScore ? myId : oppScore > myScore
         ? (myRole === "a" ? updated.player_b : updated.player_a) : null;
       await supabase.from("duels").update({ status: "finished", winner: winnerId }).eq("id", duelId);
+      // ✅ FIX BUG 1 : 100% des gains
       if (updated.bet_a && updated.bet_b && updated.bet_confirmed_a && updated.bet_confirmed_b && winnerId) {
-        const gain = Math.floor((updated.bet_a + updated.bet_b) * 0.9);
+        const gain = updated.bet_a + updated.bet_b;
         await supabase.rpc("transfer_bet_coins", {
           winner_id: winnerId, amount: gain,
           loser_a: updated.player_a, loser_b: updated.player_b,
@@ -319,11 +392,11 @@ export default function DuelPlayPage() {
       lose: ["Bien joué, mais c'est pas fini... 💀", "Revanche ? 🎯", "L'adversaire était solide 🤝"],
       draw: ["Égalité parfaite 🤝", "Match nul ⚖️", "Deux champions 🏆"],
     };
-    const cat   = isDraw ? "draw" : isWinner ? "win" : "lose";
+    const cat    = isDraw ? "draw" : isWinner ? "win" : "lose";
     const phrase = phrases[cat][Math.floor(Math.random() * 3)];
     const hasBet = duel?.bet_a && duel?.bet_b && duel?.bet_confirmed_a && duel?.bet_confirmed_b;
     const pot    = hasBet ? (duel!.bet_a! + duel!.bet_b!) : 0;
-    const gain   = hasBet ? Math.floor(pot * 0.9) : 0;
+    const gain   = hasBet ? pot : 0;
 
     return (
       <main className="min-h-screen bg-[#0a0a0a] text-white overflow-hidden">
@@ -365,7 +438,7 @@ export default function DuelPlayPage() {
               }}>
               <p className="text-xs text-white/30 uppercase tracking-widest mb-1">Pari</p>
               {isDraw ? <p className="text-white/60 text-sm">Match nul — mises restituées</p>
-                : isWinner ? <><p className="text-3xl font-black text-green-400">+{gain} 🪙</p><p className="text-xs text-white/30 mt-1">90% du pot de {pot} coins</p></>
+                : isWinner ? <><p className="text-3xl font-black text-green-400">+{gain} 🪙</p><p className="text-xs text-white/30 mt-1">Pot total : {pot} coins</p></>
                 : <><p className="text-3xl font-black text-red-400">-{myRole === "a" ? duel!.bet_a : duel!.bet_b} 🪙</p><p className="text-xs text-white/30 mt-1">Mise perdue</p></>}
             </div>
           )}

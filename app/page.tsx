@@ -38,7 +38,7 @@ export default function HomePage() {
         <div>
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-4 py-2 text-sm font-semibold text-yellow-300">
             <span className="h-2 w-2 rounded-full bg-yellow-400 animate-pulse" />
-            Tournois pro disponibles chaque jour
+            Tournois pro bientot disponibles
           </div>
           <h1 className="text-5xl font-black leading-[1.08] tracking-tight md:text-6xl">
             Joue.<br />Gagne.<br /><span className="text-yellow-400">Domine.</span>
@@ -98,7 +98,7 @@ export default function HomePage() {
               </div>
               <div className="mt-4 flex items-center justify-between rounded-xl bg-yellow-400 px-4 py-3 text-black">
                 <span className="text-xs font-bold">1er place</span>
-                <span className="font-black">200 GDS</span>
+                <span className="font-black">200- 400GDS</span>
                 <span className="text-xs font-bold">2e → Ticket</span>
               </div>
             </div>
@@ -115,7 +115,7 @@ export default function HomePage() {
         <h2 className="mb-8 text-2xl font-black tracking-tight">Deux façons de gagner</h2>
         <div className="grid gap-3 md:grid-cols-3">
           {[
-            { tag: "Compétitif", tagColor: "yellow", name: "Tournois Pro", desc: "50 GDS d'entrée. 5 joueurs. Fais le meilleur score, remporte 200 GDS.", featured: true },
+            { tag: "Compétitif", tagColor: "yellow", name: "Tournois Pro", desc: "50 GDS d'entrée. 5-10 joueurs. Fais le meilleur score, remporte 220-400 GDS.", featured: true },
             { tag: "Gratuit · chaque jour", tagColor: "green", name: "Tournois sponsorisés", desc: "Entrée 100% gratuite financée par 4infiny. Des opportunités de gain tous les jours.", featured: true },
             { tag: "Classement", tagColor: "yellow", name: "Classement global", desc: "Quotidien, hebdo, mensuel. Prouve que tu es le meilleur.", featured: false },
             { tag: "Progression", tagColor: "yellow", name: "Cashback & tickets", desc: "Même en perdant tu gagnes du cashback et des tickets pour les tournois sponsorisés.", featured: false },
