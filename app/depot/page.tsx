@@ -4,7 +4,6 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 const COINS_OPTIONS = [
-  { coins: 25,  gds: 25  },
   { coins: 50,  gds: 50  },
   { coins: 100, gds: 100 },
   { coins: 200, gds: 200 },

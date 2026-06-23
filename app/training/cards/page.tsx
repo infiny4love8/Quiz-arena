@@ -241,7 +241,7 @@ export default function MemoryCardPage() {
   const finalScore = gameWon ? score + timeLeft : score;
 
   useEffect(() => {
-    const saved = localStorage.getItem("training_score_memorycard");
+    const saved = localStorage.getItem("training_score_cards");
 
     if (saved) {
       try {
@@ -311,9 +311,9 @@ export default function MemoryCardPage() {
     setBestScore(newBest);
 
     localStorage.setItem(
-      "training_score_memorycard",
+      "training_score_cards",
       JSON.stringify({
-        score: `${final} pts`,
+        score: `${matchedPairs}/${totalPairs}`,
         points: final,
         baseScore: score,
         timeBonus: won ? timeLeft : 0,

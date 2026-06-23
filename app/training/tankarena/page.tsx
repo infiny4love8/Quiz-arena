@@ -354,6 +354,19 @@ function updateWeaponHUD(){const n={canon:\`Canon • \${P.burst}/3\`,missile:\`
 function updateReload(){const bar=document.getElementById('reloadBar');bar.style.width=\`\${clamp(P.burst/3,0,1)*100}%\`;bar.style.filter=P.burst>0?'brightness(1.25)':'brightness(.65)';}
 function gameOver(){
   running=false;holding=false;stopMusic();saveLeader();
+
+  try {
+    localStorage.setItem(
+      'training_score_tank',
+      JSON.stringify({
+        score: score + ' pts',
+        points: score,
+        wave: wave,
+        updatedAt: new Date().toISOString()
+      })
+    );
+  } catch(e) {}
+
   // ── Envoyer le score une seule fois
   if(!scoreSentToDuel){
     scoreSentToDuel=true;
