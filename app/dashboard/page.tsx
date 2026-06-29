@@ -419,7 +419,7 @@ export default function DashboardPage() {
         <div className="mt-8">
           <h3 className="text-sm uppercase tracking-wider text-zinc-500 mb-3">Actions rapides</h3>
           <div className="flex gap-3 overflow-x-auto pb-2 lg:grid lg:grid-cols-4 lg:overflow-visible">
-            <QuickButton href="/tournaments" icon="🏆" label="Tournois" />
+            <QuickButton href="/tournaments/pro" icon="🏆" label="Tournois" />
             <QuickButton href="/duel" icon="⚔️" label="Duel" />
             <QuickButton href="/training" icon="🎯" label="Training" />
             <QuickButton href="/depot" icon="💰" label="Dépôt" />
