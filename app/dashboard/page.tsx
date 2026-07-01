@@ -9,127 +9,79 @@ type UserData = {
   full_name: string;
   coins: number;
   tickets: number;
-  level: number;
-  ranking: number;
-  cashback: number;
+  level?: number;
+  ranking?: number;
+  cashback?: number;
+  xp?: number;
 };
 
-// ===== WELCOME MODAL =====
 function WelcomeModal({ onClose }: { onClose: () => void }) {
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.80)" }}
-    >
-      <div
-        className="relative w-full max-w-md rounded-[20px] p-6"
-        style={{
-          background: "#0a0a0f",
-          border: "1px solid rgba(250,204,21,0.35)",
-        }}
-      >
-        {/* Bouton fermer */}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4">
+      <div className="relative w-full max-w-md rounded-[20px] border border-yellow-400/35 bg-[#0a0a0f] p-6">
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 flex h-7 w-7 items-center justify-center rounded-lg text-zinc-400 hover:text-white transition"
-          style={{ background: "rgba(255,255,255,0.06)", border: "0.5px solid rgba(255,255,255,0.12)" }}
+          className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-400 transition hover:text-white"
         >
           ✕
         </button>
 
-        {/* Header */}
         <div className="mb-5 text-center">
-          <div className="text-4xl mb-2" style={{ display: "inline-block", animation: "zonarena-bounce 1.2s ease infinite" }}>
-            🎁
-          </div>
-          <h2 className="text-xl font-bold text-yellow-400">Bienvenue sur Zonarena</h2>
+          <div className="mb-2 inline-block text-4xl animate-bounce">🎁</div>
+          <h2 className="text-xl font-bold text-yellow-400">
+            Bienvenue sur Zonarena
+          </h2>
           <div className="mx-auto mt-2 h-0.5 w-10 rounded bg-yellow-400 opacity-50" />
         </div>
 
-        {/* Tickets offerts */}
-        <div
-          className="mb-4 rounded-xl px-4 py-3"
-          style={{ background: "rgba(250,204,21,0.07)", border: "0.5px solid rgba(250,204,21,0.2)" }}
-        >
-          <p className="text-sm text-white leading-relaxed">
+        <div className="mb-4 rounded-xl border border-yellow-400/20 bg-yellow-400/10 px-4 py-3">
+          <p className="text-sm leading-relaxed text-white">
             🎉 Nous t&apos;offrons{" "}
-            <span className="font-semibold text-yellow-400">3 tickets gratuit</span>{" "}
+            <span className="font-semibold text-yellow-400">3 tickets gratuits</span>{" "}
             pour participer aux tournois sponsorisés du lancement.
           </p>
         </div>
 
-        {/* Infos */}
         <div className="mb-5 flex flex-col gap-3">
-          <div className="flex items-start gap-3">
-            <span className="text-lg">🎫</span>
-            <p className="text-sm text-zinc-400 leading-relaxed">
-              Les <span className="text-white">tickets</span> servent à rejoindre les{" "}
-              <span className="text-yellow-400">tournois sponsorisés</span>.
-            </p>
-          </div>
-          <div className="flex items-start gap-3">
-            <span className="text-lg">🪙</span>
-            <p className="text-sm text-zinc-400 leading-relaxed">
-              Les <span className="text-white">coins</span> servent à rejoindre les{" "}
-              <span className="text-yellow-400">tournois Pro</span>. —{" "}
-              <span className="text-zinc-500">1 coin = 1 GDS</span>
-            </p>
-          </div>
-          <div className="flex items-start gap-3">
-            <span className="text-lg">🏆</span>
-            <p className="text-sm text-zinc-400 leading-relaxed">
-              Les tournois Pro arrivent bientôt — vous pourriez gagner tous les jours, monter au
-              classement et <span className="text-yellow-400">devenir le meilleur</span>.
-            </p>
-          </div>
-          <div className="flex items-start gap-3">
-            <span className="text-lg">💳</span>
-            <p className="text-sm text-zinc-400 leading-relaxed">
-              Tu peux acheter des tickets ou des coins dans la section{" "}
-              <span className="text-yellow-400">Coins / Tickets</span>.
-            </p>
-          </div>
+          {[
+            ["🎫", "Les tickets servent à rejoindre les tournois sponsorisés."],
+            ["🪙", "Les coins servent à rejoindre les tournois Pro. 1 coin = 1 GDS."],
+            ["🏆", "Joue, progresse, grimpe et tente de devenir l’un des meilleurs."],
+            ["💳", "Tu peux acheter des tickets ou des coins dans Coins / Tickets."],
+          ].map(([icon, text]) => (
+            <div key={text} className="flex items-start gap-3">
+              <span className="text-lg">{icon}</span>
+              <p className="text-sm leading-relaxed text-zinc-400">{text}</p>
+            </div>
+          ))}
         </div>
 
-        {/* Footer */}
-        <div
-          className="mb-4 pb-4 text-center"
-          style={{ borderTop: "0.5px solid rgba(255,255,255,0.08)", paddingTop: "14px" }}
-        >
-          <p className="text-xs text-zinc-600 leading-relaxed">
-            Merci d&apos;avoir choisi Zonarena.<br />
+        <div className="mb-4 border-t border-white/10 pt-4 text-center">
+          <p className="text-xs leading-relaxed text-zinc-600">
+            Merci d&apos;avoir choisi Zonarena.
+            <br />
             Amuse-toi, progresse et tente de gagner. 🚀
           </p>
         </div>
 
         <button
           onClick={onClose}
-          className="w-full rounded-xl py-3 text-sm font-bold text-black transition hover:opacity-90"
-          style={{ background: "#facc15" }}
+          className="w-full rounded-xl bg-yellow-400 py-3 text-sm font-bold text-black transition hover:bg-yellow-300"
         >
           C&apos;est parti ! 🎮
         </button>
       </div>
-
-      <style>{`
-        @keyframes zonarena-bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-6px); }
-        }
-      `}</style>
     </div>
   );
 }
-// ===== FIN WELCOME MODAL =====
 
 export default function DashboardPage() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showWelcomeModal, setShowWelcomeModal] = useState(false); // ← AJOUT
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const router = useRouter();
 
-  // 🔐 LOAD USER
   useEffect(() => {
     async function loadUser() {
       setLoading(true);
@@ -155,9 +107,7 @@ export default function DashboardPage() {
       }
 
       setUserData(data);
-      console.log("👤 ID connecté:", session.user.id);
 
-      // ← AJOUT : affiche le modal si première connexion
       const key = `zonarena_welcome_seen_${session.user.id}`;
       if (!localStorage.getItem(key)) {
         setShowWelcomeModal(true);
@@ -169,48 +119,44 @@ export default function DashboardPage() {
     loadUser();
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session?.user) {
-        loadUser();
-      }
-      if (event === "SIGNED_OUT") {
-        router.replace("/login");
-      }
+      if (event === "SIGNED_IN" && session?.user) loadUser();
+      if (event === "SIGNED_OUT") router.replace("/login");
     });
 
     return () => listener.subscription.unsubscribe();
   }, [router]);
 
-  // ← AJOUT : fermeture du modal + marque comme vu
   const handleCloseWelcome = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
     if (session?.user) {
       localStorage.setItem(`zonarena_welcome_seen_${session.user.id}`, "true");
     }
+
     setShowWelcomeModal(false);
   };
 
-  // 🔄 POLLING DUELS
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
 
     const checkPendingDuels = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user) return;
 
-      console.log("🔍 Je cherche des duels pour:", user.id);
-
-      const { data: pendingDuels, error } = await supabase
+      const { data: pendingDuels } = await supabase
         .from("duels")
         .select("id")
         .eq("player_b", user.id)
         .eq("status", "pending")
         .limit(1);
 
-      console.log("📦 Résultat:", pendingDuels, "Erreur:", error);
-
       if (pendingDuels && pendingDuels.length > 0) {
-        const duelId = pendingDuels[0].id;
-        router.push(`/duel/${duelId}/respond`);
+        router.push(`/duel/${pendingDuels[0].id}/respond`);
       }
     };
 
@@ -224,7 +170,7 @@ export default function DashboardPage() {
 
   if (loading || !userData) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(250,204,21,0.12),_transparent_35%),linear-gradient(to_bottom,_#09090b,_#000)] text-white">
+      <main className="flex min-h-screen items-center justify-center bg-[#050506] text-white">
         <div className="text-center">
           <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-yellow-400 border-t-transparent" />
           <p className="text-zinc-400">Chargement...</p>
@@ -233,25 +179,30 @@ export default function DashboardPage() {
     );
   }
 
-  return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(250,204,21,0.12),_transparent_35%),linear-gradient(to_bottom,_#09090b,_#000)] text-white">
+  const xp = Number(userData.xp ?? 0);
+  const level = getLevelFromXp(xp);
+  const currentLevelXp = getLevelBaseXp(level);
+  const nextLevelXp = getNextLevelXp(level);
+  const progress = Math.min(
+    100,
+    Math.max(0, ((xp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100)
+  );
 
-      {/* ← AJOUT : Modal de bienvenue */}
+  return (
+    <main className="min-h-screen bg-[#050506] text-white">
       {showWelcomeModal && <WelcomeModal onClose={handleCloseWelcome} />}
 
-      {/* Background */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute right-[-120px] top-[-120px] h-[360px] w-[360px] rounded-full bg-yellow-400/15 blur-3xl" />
-        <div className="absolute bottom-[-160px] left-[-100px] h-[420px] w-[420px] rounded-full bg-yellow-500/10 blur-3xl" />
+        <div className="absolute right-[-160px] top-[-160px] h-[380px] w-[380px] rounded-full bg-yellow-400/10 blur-3xl" />
+        <div className="absolute bottom-[-180px] left-[-120px] h-[420px] w-[420px] rounded-full bg-yellow-500/5 blur-3xl" />
       </div>
 
-      {/* ===== MENU HAMBURGER MOBILE ===== */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
+      <div className="lg:hidden fixed left-4 top-4 z-50">
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 rounded-xl bg-black/50 backdrop-blur-xl border border-yellow-400/30"
+          className="rounded-xl border border-yellow-400/30 bg-[#0c0c0e]/90 p-2 backdrop-blur-xl"
         >
-          <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="h-6 w-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             {mobileMenuOpen ? (
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             ) : (
@@ -261,108 +212,98 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* ===== SIDEBAR MOBILE (overlay) ===== */}
       {mobileMenuOpen && (
         <>
-          <div className="fixed inset-0 bg-black/70 z-40 lg:hidden" onClick={() => setMobileMenuOpen(false)} />
-          <aside className="fixed left-0 top-0 h-screen w-72 z-50 border-r border-yellow-400/20 bg-zinc-950/95 backdrop-blur-xl p-5 lg:hidden">
-            <div className="flex justify-end mb-4">
+          <div
+            className="fixed inset-0 z-40 bg-black/70 lg:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+
+          <aside className="fixed left-0 top-0 z-50 flex h-screen w-72 flex-col border-r border-[#3a3220] bg-[#0c0c0e] p-5 lg:hidden">
+            <div className="mb-4 flex justify-end">
               <button onClick={() => setMobileMenuOpen(false)} className="p-2 text-zinc-400">
                 ✕
               </button>
             </div>
-            <Link href="/" className="flex items-center gap-2 text-xl font-black text-yellow-400 mb-8">
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-yellow-400 text-black">
-                Z
-              </span>
-              Zonarena
-            </Link>
 
-            <div className="rounded-2xl border border-yellow-400/10 bg-black/30 p-4 mb-6">
-              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Connecté</p>
-              <p className="mt-2 text-sm font-semibold text-white">{userData.full_name}</p>
+            <SidebarLogo />
+
+            <div className="mt-6 rounded-2xl border border-[#232326] bg-black/30 p-4">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-[#8a8a92]">
+                Connecté
+              </p>
+              <p className="mt-2 text-sm font-semibold text-white">
+                {userData.full_name}
+              </p>
+              <p className="mt-1 text-xs text-yellow-400">
+                {userData.coins ?? 0} coins · {userData.tickets ?? 0} tickets
+              </p>
             </div>
 
-            <nav className="space-y-2">
-              <Link href="/dashboard" className="block rounded-2xl bg-yellow-400 px-4 py-3 font-bold text-black" onClick={() => setMobileMenuOpen(false)}>
+            <nav className="mt-6 flex-1 space-y-2 overflow-y-auto pb-6">
+              <MobileNavLink href="/dashboard" active onClick={() => setMobileMenuOpen(false)}>
                 Dashboard
-              </Link>
-              <Link href="/tournaments" className="block rounded-2xl px-4 py-3 text-zinc-300" onClick={() => setMobileMenuOpen(false)}>
+              </MobileNavLink>
+              <MobileNavLink href="/tournaments/pro" onClick={() => setMobileMenuOpen(false)}>
                 Tournois Pro
-              </Link>
-              <Link href="/tournamentsponsorise" className="block rounded-2xl px-4 py-3 text-zinc-300" onClick={() => setMobileMenuOpen(false)}>
+              </MobileNavLink>
+              <MobileNavLink href="/tournamentsponsorise" onClick={() => setMobileMenuOpen(false)}>
                 Tournois Sponsorisé
-              </Link>
-              <Link href="/duel" className="block rounded-2xl px-4 py-3 text-zinc-300" onClick={() => setMobileMenuOpen(false)}>
+              </MobileNavLink>
+              <MobileNavLink href="/duel" onClick={() => setMobileMenuOpen(false)}>
                 Duel 1 VS 1
-              </Link>
-              <Link href="/training" className="block rounded-2xl px-4 py-3 text-zinc-300" onClick={() => setMobileMenuOpen(false)}>
-                Entrainement
-              </Link>
-              <Link href="/withdraw" className="block rounded-2xl px-4 py-3 text-zinc-300" onClick={() => setMobileMenuOpen(false)}>
+              </MobileNavLink>
+              <MobileNavLink href="/training" onClick={() => setMobileMenuOpen(false)}>
+                Entraînement
+              </MobileNavLink>
+              <MobileNavLink href="/withdraw" onClick={() => setMobileMenuOpen(false)}>
                 Retrait
-              </Link>
-              <Link href="/depot" className="block rounded-2xl px-4 py-3 text-zinc-300" onClick={() => setMobileMenuOpen(false)}>
-                Coins/Tickets
-              </Link>
-              <Link href="/support" className="block rounded-2xl px-4 py-3 text-zinc-300" onClick={() => setMobileMenuOpen(false)}>
+              </MobileNavLink>
+              <MobileNavLink href="/depot" onClick={() => setMobileMenuOpen(false)}>
+                Coins / Tickets
+              </MobileNavLink>
+              <MobileNavLink href="/support" onClick={() => setMobileMenuOpen(false)}>
                 Support
-              </Link>
+              </MobileNavLink>
             </nav>
 
-            <button
-              onClick={async () => {
-                await supabase.auth.signOut();
-                router.replace("/login");
-              }}
-              className="absolute bottom-6 left-5 right-5 rounded-2xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm font-bold text-red-400"
-            >
-              Déconnexion
-            </button>
+            <div className="border-t border-[#232326] pt-4">
+              <button
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  router.replace("/login");
+                }}
+                className="w-full rounded-2xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm font-bold text-red-400"
+              >
+                Déconnexion
+              </button>
+            </div>
           </aside>
         </>
       )}
 
-      {/* ===== SIDEBAR DESKTOP ===== */}
-      <aside className="fixed left-0 top-0 hidden h-screen w-72 border-r border-yellow-400/10 bg-zinc-950/90 backdrop-blur-xl p-5 lg:block">
-        <Link href="/" className="flex items-center gap-2 text-xl font-black text-yellow-400">
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-yellow-400 text-black">
-            Z
-          </span>
-          Zonarena
-        </Link>
+      <aside className="fixed left-0 top-0 hidden h-screen w-72 flex-col border-r border-[#3a3220] bg-[#0c0c0e] p-5 lg:flex">
+        <SidebarLogo />
 
-        <div className="mt-6 rounded-2xl border border-yellow-400/10 bg-black/30 p-4">
-          <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Connecté</p>
-          <p className="mt-2 text-sm font-semibold text-white">{userData.full_name}</p>
-          <p className="text-xs text-zinc-400">Dashboard Premium</p>
+        <div className="mt-6 rounded-2xl border border-[#232326] bg-black/30 p-4">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-[#8a8a92]">
+            Connecté
+          </p>
+          <p className="mt-2 text-sm font-semibold text-white">
+            {userData.full_name}
+          </p>
+          <p className="mt-1 text-xs text-yellow-400">Dashboard Premium</p>
         </div>
 
-        <nav className="mt-8 space-y-2">
-          <Link href="/dashboard" className="block rounded-2xl bg-yellow-400 px-4 py-3 font-bold text-black shadow-[0_0_0_1px_rgba(250,204,21,0.25)]">
-            Dashboard
-          </Link>
-          <Link href="/tournaments/pro" className="block rounded-2xl px-4 py-3 text-zinc-300 transition hover:bg-white/5 hover:text-yellow-400">
-            Tournois
-          </Link>
-          <Link href="/tournamentsponsorise" className="block rounded-2xl px-4 py-3 text-zinc-300 transition hover:bg-white/5 hover:text-yellow-400">
-            Tournois Sponsorisé
-          </Link>
-          <Link href="/duel" className="block rounded-2xl px-4 py-3 text-zinc-300 transition hover:bg-white/5 hover:text-yellow-400">
-            Duel 1v1
-          </Link>
-          <Link href="/training" className="block rounded-2xl px-4 py-3 text-zinc-300 transition hover:bg-white/5 hover:text-yellow-400">
-            Entrainement
-          </Link>
-          <Link href="/withdraw" className="block rounded-2xl px-4 py-3 text-zinc-300 transition hover:bg-white/5 hover:text-yellow-400">
-            Retrait
-          </Link>
-          <Link href="/depot" className="block rounded-2xl px-4 py-3 text-zinc-300 transition hover:bg-white/5 hover:text-yellow-400">
-            Dépôt
-          </Link>
-          <Link href="/support" className="block rounded-2xl px-4 py-3 text-zinc-300 transition hover:bg-white/5 hover:text-yellow-400">
-            Support
-          </Link>
+        <nav className="mt-8 flex-1 space-y-2">
+          <DesktopNavLink href="/dashboard" active>Dashboard</DesktopNavLink>
+          <DesktopNavLink href="/tournaments/pro">Tournois Pro</DesktopNavLink>
+          <DesktopNavLink href="/tournamentsponsorise">Tournois Sponsorisé</DesktopNavLink>
+          <DesktopNavLink href="/duel">Duel 1v1</DesktopNavLink>
+          <DesktopNavLink href="/training">Entraînement</DesktopNavLink>
+          <DesktopNavLink href="/withdraw">Retrait</DesktopNavLink>
+          <DesktopNavLink href="/depot">Dépôt</DesktopNavLink>
+          <DesktopNavLink href="/support">Support</DesktopNavLink>
         </nav>
 
         <button
@@ -370,44 +311,51 @@ export default function DashboardPage() {
             await supabase.auth.signOut();
             router.replace("/login");
           }}
-          className="absolute bottom-6 left-5 right-5 rounded-2xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm font-bold text-red-400 transition hover:bg-red-500/10"
+          className="rounded-2xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm font-bold text-red-400 transition hover:bg-red-500/10"
         >
           Déconnexion
         </button>
       </aside>
 
-      {/* ===== CONTENT ===== */}
-      <section className="pb-24 pt-6 lg:ml-72 p-4 sm:p-6">
-        {/* Welcome */}
-        <div className="rounded-3xl border border-yellow-400/10 bg-black/30 p-5 sm:p-6 backdrop-blur-xl">
-          <p className="text-xs uppercase tracking-[0.3em] text-yellow-400/70">Bienvenue sur ton espace</p>
-          <h1 className="mt-2 text-2xl sm:text-3xl font-black text-white">
+      <section className="relative z-10 pb-24 pt-6 lg:ml-72 p-4 sm:p-6">
+        <div className="rounded-3xl border border-[#232326] bg-[#0c0c0e] p-5 sm:p-6">
+          <p className="text-[10px] uppercase tracking-[0.25em] text-yellow-400">
+            Bienvenue sur ton espace
+          </p>
+          <h1 className="mt-2 text-2xl font-medium text-white sm:text-3xl">
             Hello, <span className="text-yellow-400">{userData.full_name}</span> 👋
           </h1>
-          <p className="mt-2 max-w-2xl text-sm sm:text-base text-zinc-400">
-            Gère tes coins, tes tickets et ton activité.
+          <p className="mt-2 max-w-2xl text-sm text-[#8a8a92]">
+            Gère tes coins, tes tickets, tes retraits et ta progression.
           </p>
         </div>
 
-        {/* Cartes stats - TES COINS, TICKETS, ETC */}
-        <div className="mt-6 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          <Card title="Coins" value={userData.coins ?? 0} icon="🪙" />
-          <Card title="Tickets" value={userData.tickets ?? 0} icon="🎫" />
-          <Card title="Niveau" value={`Lv. ${userData.level ?? 1}`} icon="⭐" />
-          <Card title="Classement" value={`#${userData.ranking ?? 0}`} icon="🏆" />
-          <Card title="Cashback" value={`${userData.cashback ?? 0} HTG`} icon="💵" />
-          <Card title="Statut" value="Actif" icon="✅" />
+        <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-3">
+          <CollectorCard title="Coins" value={userData.coins ?? 0} icon="🪙" badge="SOLDE" />
+          <CollectorCard title="Tickets" value={userData.tickets ?? 0} icon="🎫" badge="RARE" />
+          <CollectorCard
+            title="Niveau"
+            value={`Débutant ⭐`}
+            icon="⭐"
+            badge={`LV.${level}`}
+            progress={progress}
+            sub={`${xp} / ${nextLevelXp} XP`}
+          />
+          <CollectorCard title="Classement" value="Bientôt dispo" icon="🏆" badge="SOON" />
+          <CollectorCard title="Cashback" value="5 coins" icon="💵" sub="si défaite Pro" />
+          <CollectorCard title="Objectif" value="Jouer Pro" icon="🎯" badge="GO" sub="+15 XP bientôt" />
         </div>
 
-        {/* Section Tournoi Sponsorisé pour MOBILE (apparaît en bas) */}
-        <div className="mt-8 lg:hidden">
+        <div className="mt-8">
           <Link href="/tournamentsponsorise">
-            <div className="rounded-3xl border-2 border-yellow-400/30 bg-gradient-to-r from-yellow-400/10 to-transparent p-5 backdrop-blur-xl hover:border-yellow-400/50 transition-all">
+            <div className="rounded-3xl border border-yellow-400/25 bg-gradient-to-r from-yellow-400/10 via-[#161615] to-[#0c0c0e] p-5 transition hover:-translate-y-0.5 hover:border-yellow-400/45">
               <div className="flex items-center gap-3">
                 <span className="text-3xl">⭐</span>
                 <div>
-                  <h3 className="font-bold text-yellow-400">Tournoi Sponsorisé</h3>
-                  <p className="text-xs text-zinc-400">Gagne des récompenses exclusives !</p>
+                  <h3 className="font-medium text-yellow-400">Tournoi Sponsorisé</h3>
+                  <p className="text-xs text-[#8a8a92]">
+                    Utilise tes tickets et tente de gagner gratuitement.
+                  </p>
                 </div>
                 <span className="ml-auto text-yellow-400">→</span>
               </div>
@@ -415,14 +363,16 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {/* Actions rapides en bas pour mobile - scroll horizontal */}
         <div className="mt-8">
-          <h3 className="text-sm uppercase tracking-wider text-zinc-500 mb-3">Actions rapides</h3>
-          <div className="flex gap-3 overflow-x-auto pb-2 lg:grid lg:grid-cols-4 lg:overflow-visible">
-            <QuickButton href="/tournaments/pro" icon="🏆" label="Tournois" />
+          <h3 className="mb-3 text-[10px] uppercase tracking-[0.25em] text-[#8a8a92]">
+            Actions rapides
+          </h3>
+
+          <div className="flex gap-3 overflow-x-auto pb-2 lg:grid lg:grid-cols-6 lg:overflow-visible">
+            <QuickButton href="/tournaments/pro" icon="🏆" label="Pro" />
+            <QuickButton href="/tournamentsponsorise" icon="🎁" label="Gratuit" />
             <QuickButton href="/duel" icon="⚔️" label="Duel" />
-            <QuickButton href="/training" icon="🎯" label="Training" />
-            <QuickButton href="/depot" icon="💰" label="Dépôt" />
+            <QuickButton href="/depot" icon="🪙" label="Dépôt" />
             <QuickButton href="/withdraw" icon="💸" label="Retrait" />
             <QuickButton href="/support" icon="💬" label="Support" />
           </div>
@@ -432,28 +382,147 @@ export default function DashboardPage() {
   );
 }
 
-// Card pour les stats
-function Card({ title, value, icon }: { title: string; value: string | number; icon: string }) {
+function SidebarLogo() {
   return (
-    <div className="group rounded-2xl border border-yellow-400/10 bg-zinc-950/80 p-4 backdrop-blur-md transition hover:-translate-y-0.5 hover:border-yellow-400/30">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-2xl">{icon}</span>
-        <div className="h-8 w-8 rounded-full bg-yellow-400/10 flex items-center justify-center">
-          <span className="text-xs text-yellow-400">↑</span>
+    <Link href="/" className="flex items-center gap-2 text-xl font-black text-yellow-400">
+      <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-yellow-400 text-black">
+        Z
+      </span>
+      Zonarena
+    </Link>
+  );
+}
+
+function DesktopNavLink({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`block rounded-2xl px-4 py-3 text-sm transition ${
+        active
+          ? "bg-yellow-400 font-bold text-black"
+          : "text-zinc-300 hover:bg-white/5 hover:text-yellow-400"
+      }`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function MobileNavLink({
+  href,
+  active,
+  onClick,
+  children,
+}: {
+  href: string;
+  active?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      className={`block rounded-2xl px-4 py-3 text-sm transition ${
+        active
+          ? "bg-yellow-400 font-bold text-black"
+          : "text-zinc-300 hover:bg-white/5 hover:text-yellow-400"
+      }`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function CollectorCard({
+  title,
+  value,
+  icon,
+  badge,
+  sub,
+  progress,
+}: {
+  title: string;
+  value: string | number;
+  icon: string;
+  badge?: string;
+  sub?: string;
+  progress?: number;
+}) {
+  return (
+    <div className="group relative overflow-hidden rounded-[10px] border border-[#3a3220] bg-gradient-to-b from-[#161615] to-[#0f0f0e] p-3 transition hover:-translate-y-0.5 hover:border-yellow-400/50">
+      {badge && (
+        <span className="absolute right-0 top-0 rounded-bl-lg bg-yellow-400 px-2 py-0.5 text-[8px] font-medium text-[#1a1400]">
+          {badge}
+        </span>
+      )}
+
+      <div className="text-[15px] text-yellow-400">{icon}</div>
+      <p className="mt-2 text-[10px] text-[#8a8a92]">{title}</p>
+      <p className="mt-1 text-[17px] font-medium text-yellow-400">{value}</p>
+
+      {sub && <p className="mt-1 text-[10px] text-[#8a8a92]">{sub}</p>}
+
+      {typeof progress === "number" && (
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#232320]">
+          <div
+            className="h-full rounded-full bg-yellow-400 transition-all"
+            style={{ width: `${progress}%` }}
+          />
         </div>
-      </div>
-      <p className="text-sm text-zinc-400">{title}</p>
-      <p className="text-2xl font-bold text-yellow-400 mt-1">{value}</p>
+      )}
     </div>
   );
 }
 
-// Bouton rapide pour mobile
-function QuickButton({ href, icon, label }: { href: string; icon: string; label: string }) {
+function QuickButton({
+  href,
+  icon,
+  label,
+}: {
+  href: string;
+  icon: string;
+  label: string;
+}) {
   return (
-    <Link href={href} className="flex-shrink-0 w-20 text-center p-3 rounded-xl bg-zinc-950/80 border border-yellow-400/10 hover:border-yellow-400/30 transition-all">
-      <div className="text-2xl mb-1">{icon}</div>
-      <div className="text-[11px] font-medium text-zinc-400">{label}</div>
+    <Link
+      href={href}
+      className="w-20 flex-shrink-0 rounded-xl border border-[#232326] bg-[#0c0c0e] p-3 text-center transition hover:-translate-y-0.5 hover:border-yellow-400/40 lg:w-auto"
+    >
+      <div className="mb-1 text-2xl">{icon}</div>
+      <div className="text-[11px] font-medium text-[#8a8a92]">{label}</div>
     </Link>
   );
+}
+
+function getLevelFromXp(xp: number) {
+  if (xp >= 1000) return 5;
+  if (xp >= 500) return 4;
+  if (xp >= 250) return 3;
+  if (xp >= 100) return 2;
+  return 1;
+}
+
+function getLevelBaseXp(level: number) {
+  if (level <= 1) return 0;
+  if (level === 2) return 100;
+  if (level === 3) return 250;
+  if (level === 4) return 500;
+  return 1000;
+}
+
+function getNextLevelXp(level: number) {
+  if (level <= 1) return 100;
+  if (level === 2) return 250;
+  if (level === 3) return 500;
+  if (level === 4) return 1000;
+  return 1500;
 }
