@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import flagsQuestions from "@/data/flags.json";
@@ -58,8 +58,23 @@ function prepareQuestions(): Question[] {
       options: fisherYates(q.options),
     }));
 }
-
 export default function ProFlagsPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-black text-white flex items-center justify-center px-5">
+          <div className="rounded-3xl border border-yellow-400/30 bg-zinc-950 p-8 text-center">
+            <div className="mx-auto mb-5 h-12 w-12 animate-spin rounded-full border-4 border-yellow-400/20 border-t-yellow-400" />
+            <p className="font-black text-zinc-300">Chargement du challenge...</p>
+          </div>
+        </main>
+      }
+    >
+      <ProFlagsGame />
+    </Suspense>
+  );
+}
+function ProFlagsGame() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
