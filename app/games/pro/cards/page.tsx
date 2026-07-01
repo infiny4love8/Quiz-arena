@@ -1,10 +1,16 @@
 "use client";
 
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-type GameStatus = "checking" | "ready" | "playing" | "submitting" | "finished" | "error";
+type GameStatus =
+  | "checking"
+  | "ready"
+  | "playing"
+  | "submitting"
+  | "finished"
+  | "error";
 
 type Card = {
   id: number;
@@ -20,7 +26,7 @@ const TOTAL_PAIRS = 8;
 const POINTS_PER_PAIR = 25;
 const WRONG_PENALTY = 5;
 
-const CARD_ICONS = ["🎮", "🏆", "⚡", "💎", "🛡️", "🔥", "🎯", "👑"];
+const CARD_ICONS = ["🎮", "🏆", "⚡", "💎", "🛡️", "🔥", "🎯", "🧠"];
 
 function shuffle<T>(array: T[]) {
   return [...array].sort(() => Math.random() - 0.5);
@@ -53,11 +59,28 @@ function createDeck(): Card[] {
 }
 
 export default function ProCardsPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-black text-white flex items-center justify-center px-5">
+          <div className="rounded-3xl border border-yellow-400/30 bg-zinc-950 p-8 text-center">
+            <div className="mx-auto mb-5 h-12 w-12 animate-spin rounded-full border-4 border-yellow-400/20 border-t-yellow-400" />
+            <p className="font-black text-zinc-300">Chargement du challenge...</p>
+          </div>
+        </main>
+      }
+    >
+      <ProCardsGame />
+    </Suspense>
+  );
+}
 
-  const tournamentId = searchParams.get("tournamentId") || "";
-  const gameToken = searchParams.get("token") || "";
+function ProCardsGame() {
+  const router = useRouter();
+
+  const [tournamentId, setTournamentId] = useState("");
+  const [gameToken, setGameToken] = useState("");
+  const [paramsReady, setParamsReady] = useState(false);
 
   const [status, setStatus] = useState<GameStatus>("checking");
   const [error, setError] = useState("");
@@ -82,12 +105,20 @@ export default function ProCardsPage() {
 
   const gameTitle = useMemo(() => "Trouve les paires", []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setTournamentId(params.get("tournamentId") || "");
+    setGameToken(params.get("token") || "");
+    setParamsReady(true);
+  }, []);
+
   function beep(type: "flip" | "match" | "wrong" | "tick" | "win") {
     if (!soundOn || typeof window === "undefined") return;
 
     const AudioClass =
       window.AudioContext ||
-      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      (window as typeof window & { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
 
     if (!AudioClass) return;
 
@@ -98,11 +129,36 @@ export default function ProCardsPage() {
     const gain = audio.createGain();
 
     const config = {
-      flip: { freq: 620, gain: 0.04, duration: 0.08, type: "sine" as OscillatorType },
-      match: { freq: 920, gain: 0.08, duration: 0.16, type: "triangle" as OscillatorType },
-      wrong: { freq: 150, gain: 0.09, duration: 0.18, type: "sawtooth" as OscillatorType },
-      tick: { freq: 760, gain: 0.035, duration: 0.07, type: "sine" as OscillatorType },
-      win: { freq: 1050, gain: 0.1, duration: 0.28, type: "triangle" as OscillatorType },
+      flip: {
+        freq: 620,
+        gain: 0.04,
+        duration: 0.08,
+        type: "sine" as OscillatorType,
+      },
+      match: {
+        freq: 920,
+        gain: 0.08,
+        duration: 0.16,
+        type: "triangle" as OscillatorType,
+      },
+      wrong: {
+        freq: 150,
+        gain: 0.09,
+        duration: 0.18,
+        type: "sawtooth" as OscillatorType,
+      },
+      tick: {
+        freq: 760,
+        gain: 0.035,
+        duration: 0.07,
+        type: "sine" as OscillatorType,
+      },
+      win: {
+        freq: 1050,
+        gain: 0.1,
+        duration: 0.28,
+        type: "triangle" as OscillatorType,
+      },
     }[type];
 
     osc.type = config.type;
@@ -113,11 +169,16 @@ export default function ProCardsPage() {
     gain.connect(audio.destination);
 
     osc.start();
-    gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + config.duration);
+    gain.gain.exponentialRampToValueAtTime(
+      0.001,
+      audio.currentTime + config.duration
+    );
     osc.stop(audio.currentTime + config.duration + 0.02);
   }
 
   useEffect(() => {
+    if (!paramsReady) return;
+
     const checkAccess = async () => {
       try {
         if (!tournamentId || !gameToken) {
@@ -213,7 +274,7 @@ export default function ProCardsPage() {
     };
 
     checkAccess();
-  }, [router, tournamentId, gameToken]);
+  }, [router, tournamentId, gameToken, paramsReady]);
 
   useEffect(() => {
     if (status !== "playing") return;
@@ -305,16 +366,17 @@ export default function ProCardsPage() {
     }
   }
 
-  function finishGame(won: boolean, customScore?: number, customPairs?: number, customWrongs?: number) {
+  function finishGame(
+    won: boolean,
+    customScore?: number,
+    customPairs?: number,
+    customWrongs?: number
+  ) {
     if (timerRef.current) clearTimeout(timerRef.current);
 
-    const safeScore =
-      customScore ??
-      Math.max(0, score + (won ? timeLeft : 0));
-
+    const safeScore = customScore ?? Math.max(0, score + (won ? timeLeft : 0));
     const pairs = customPairs ?? matchedPairs;
     const wrongs = customWrongs ?? wrongAttempts;
-
     const completionTimeMs = Math.max(0, (TOTAL_TIME - timeLeft) * 1000);
 
     if (won) beep("win");
@@ -417,7 +479,9 @@ export default function ProCardsPage() {
         <div className="rounded-3xl border border-purple-400/30 bg-zinc-950 p-8 text-center">
           <div className="mx-auto mb-5 h-12 w-12 animate-spin rounded-full border-4 border-purple-400/20 border-t-purple-400" />
           <h1 className="text-2xl font-black">Vérification du challenge...</h1>
-          <p className="mt-3 text-zinc-400">Jeton, tournoi et participation en cours de validation.</p>
+          <p className="mt-3 text-zinc-400">
+            Jeton, tournoi et participation en cours de validation.
+          </p>
         </div>
       </main>
     );
@@ -428,7 +492,9 @@ export default function ProCardsPage() {
       <main className="min-h-screen bg-black text-white flex items-center justify-center px-5">
         <div className="w-full max-w-lg rounded-3xl border border-red-500/30 bg-zinc-950 p-8 text-center">
           <div className="text-5xl">🚫</div>
-          <h1 className="mt-5 text-2xl font-black text-red-400">Challenge indisponible</h1>
+          <h1 className="mt-5 text-2xl font-black text-red-400">
+            Challenge indisponible
+          </h1>
           <p className="mt-3 text-zinc-400">{error}</p>
           <button
             onClick={() => router.push("/tournaments/pro")}
@@ -467,9 +533,21 @@ export default function ProCardsPage() {
             </div>
 
             <div className="mt-8 grid gap-4 md:grid-cols-3">
-              <InfoCard icon="⏱️" title="90 secondes" text="Trouve les 8 paires avant la fin." />
-              <InfoCard icon="✅" title="+25 points" text="Chaque bonne paire augmente ton score." />
-              <InfoCard icon="❌" title="-5 points" text="Chaque mauvaise paire coûte des points." />
+              <InfoCard
+                icon="⏱️"
+                title="90 secondes"
+                text="Trouve les 8 paires avant la fin."
+              />
+              <InfoCard
+                icon="✅"
+                title="+25 points"
+                text="Chaque bonne paire augmente ton score."
+              />
+              <InfoCard
+                icon="❌"
+                title="-5 points"
+                text="Chaque mauvaise paire coûte des points."
+              />
             </div>
 
             <div className="mt-8 rounded-3xl border border-yellow-400/30 bg-yellow-400/10 p-5">
@@ -477,7 +555,8 @@ export default function ProCardsPage() {
                 Objectif
               </p>
               <p className="mt-2 text-lg text-zinc-300">
-                Fais le meilleur score possible. Ton résultat sera envoyé automatiquement pour le classement Pro.
+                Fais le meilleur score possible. Ton résultat sera envoyé
+                automatiquement pour le classement Pro.
               </p>
             </div>
           </div>
@@ -509,8 +588,12 @@ export default function ProCardsPage() {
       <main className="min-h-screen bg-black text-white flex items-center justify-center px-5">
         <div className="w-full max-w-lg rounded-3xl border border-green-400/30 bg-zinc-950 p-8 text-center">
           <div className="mx-auto mb-5 h-12 w-12 animate-spin rounded-full border-4 border-green-400/20 border-t-green-400" />
-          <h1 className="text-2xl font-black text-green-400">Envoi sécurisé...</h1>
-          <p className="mt-3 text-zinc-400">Ton score est envoyé au classement Pro.</p>
+          <h1 className="text-2xl font-black text-green-400">
+            Envoi sécurisé...
+          </h1>
+          <p className="mt-3 text-zinc-400">
+            Ton score est envoyé au classement Pro.
+          </p>
         </div>
       </main>
     );
@@ -527,23 +610,21 @@ export default function ProCardsPage() {
           </div>
 
           <h1 className="mt-6 text-3xl font-black">Score enregistré</h1>
-          
 
-
-<p className="mt-6 text-6xl font-black text-yellow-400">
-{finalScore} pts
-</p>
-
-          <p className="mt-3 text-zinc-400">
-            Belle tentative ! Ton score est maintenant dans le classement du tournoi.
+          <p className="mt-6 text-6xl font-black text-yellow-400">
+            {finalScore} pts
           </p>
 
-          
+          <p className="mt-3 text-zinc-400">
+            Belle tentative ! Ton score est maintenant dans le classement du
+            tournoi.
+          </p>
+
           <button
-            onClick={() => router.push("/tournaments/pro")}
+            onClick={() => router.push(`/tournaments/pro/${tournamentId}/results`)}
             className="mt-8 w-full rounded-xl bg-yellow-400 py-4 font-black text-black transition hover:bg-yellow-300"
           >
-            Retour aux tournois
+            Voir mon résultat 🏆
           </button>
         </div>
       </main>
@@ -559,7 +640,11 @@ export default function ProCardsPage() {
           <Stat title="Temps" value={`${timeLeft}s`} danger={danger} />
           <Stat title="Score" value={score.toString()} />
           <Stat title="Paires" value={`${matchedPairs}/${TOTAL_PAIRS}`} />
-          <Stat title="Erreurs" value={`${wrongAttempts}`} danger={wrongAttempts > 0} />
+          <Stat
+            title="Erreurs"
+            value={`${wrongAttempts}`}
+            danger={wrongAttempts > 0}
+          />
         </div>
 
         <div className="mb-4 h-3 overflow-hidden rounded-full bg-zinc-900">
@@ -610,7 +695,8 @@ export default function ProCardsPage() {
           </div>
 
           <p className="mt-5 text-center text-sm text-zinc-500">
-            Bonne paire : +25 pts · Mauvaise paire : -5 pts · Bonus temps à la fin
+            Bonne paire : +25 pts · Mauvaise paire : -5 pts · Bonus temps à la
+            fin
           </p>
         </div>
       </section>
@@ -640,7 +726,15 @@ function ArenaBackground() {
   );
 }
 
-function InfoCard({ icon, title, text }: { icon: string; title: string; text: string }) {
+function InfoCard({
+  icon,
+  title,
+  text,
+}: {
+  icon: string;
+  title: string;
+  text: string;
+}) {
   return (
     <div className="rounded-2xl border border-zinc-800 bg-black/60 p-5">
       <div className="text-4xl">{icon}</div>
@@ -650,11 +744,25 @@ function InfoCard({ icon, title, text }: { icon: string; title: string; text: st
   );
 }
 
-function Stat({ title, value, danger }: { title: string; value: string; danger?: boolean }) {
+function Stat({
+  title,
+  value,
+  danger,
+}: {
+  title: string;
+  value: string;
+  danger?: boolean;
+}) {
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/90 p-4 text-center">
-      <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">{title}</p>
-      <p className={`mt-1 text-3xl font-black ${danger ? "text-red-400" : "text-yellow-400"}`}>
+      <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">
+        {title}
+      </p>
+      <p
+        className={`mt-1 text-3xl font-black ${
+          danger ? "text-red-400" : "text-yellow-400"
+        }`}
+      >
         {value}
       </p>
     </div>
