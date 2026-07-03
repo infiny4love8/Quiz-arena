@@ -120,14 +120,14 @@ function Countdown({ startsAt, playWindow, status }: {
       textAlign: "center",
       fontSize: 12,
       fontVariantNumeric: "tabular-nums",
-      color: urgent ? "#FAC775" : status === "active" ? "rgba(192,221,151,.7)" : "rgba(255,255,255,.3)",
-      fontWeight: urgent || status === "active" ? 500 : 400,
+      color: urgent ? "#D4AF6A" : status === "active" ? "rgba(111,191,142,.75)" : "rgba(243,233,210,.32)",
+      fontWeight: urgent || status === "active" ? 600 : 400,
       margin: 0,
     }}>
       {status === "active" && (
         <span style={{
           display: "inline-block", width: 5, height: 5, borderRadius: "50%",
-          background: "#97C459", marginRight: 6, verticalAlign: "middle",
+          background: "#6FBF8E", marginRight: 6, verticalAlign: "middle",
           animation: "pulseDot 1.5s infinite",
         }} />
       )}
@@ -188,7 +188,7 @@ function LockDisplay({ status }: { status: string }) {
         {phase === "locked" && (
           <div style={{
             position: "absolute", inset: -5, borderRadius: "50%",
-            background: "rgba(250,199,117,.08)",
+            background: "rgba(212,175,106,.08)",
             animation: "lockHalo 2s ease-in-out infinite",
           }} />
         )}
@@ -197,10 +197,10 @@ function LockDisplay({ status }: { status: string }) {
         <div style={{
           width: 52, height: 52, borderRadius: "50%",
           background: phase === "unlocking"
-            ? "rgba(192,221,151,.12)" : "rgba(250,199,117,.08)",
+            ? "rgba(111,191,142,.12)" : "rgba(212,175,106,.08)",
           border: phase === "unlocking"
-            ? "1px solid rgba(192,221,151,.35)"
-            : "0.5px solid rgba(250,199,117,.2)",
+            ? "1px solid rgba(111,191,142,.35)"
+            : "0.5px solid rgba(212,175,106,.22)",
           display: "flex", alignItems: "center", justifyContent: "center",
           animation: phase === "locked" ? "lockFloat 3s ease-in-out infinite"
             : phase === "unlocking" ? "lockBurst .8s ease forwards"
@@ -211,7 +211,7 @@ function LockDisplay({ status }: { status: string }) {
             className={phase === "unlocking" ? "ti ti-lock-open" : "ti ti-lock"}
             style={{
               fontSize: 22,
-              color: phase === "unlocking" ? "#C0DD97" : "#FAC775",
+              color: phase === "unlocking" ? "#8FD9AF" : "#D4AF6A",
               transition: "color .3s",
             }}
             aria-hidden="true"
@@ -226,7 +226,7 @@ function LockDisplay({ status }: { status: string }) {
                 position: "absolute",
                 top: "50%", left: "50%",
                 width: 5, height: 5, borderRadius: "50%",
-                background: "#C0DD97",
+                background: "#8FD9AF",
                 transform: `rotate(${deg}deg) translateY(-28px)`,
                 animation: "sparkle .7s ease-out forwards",
                 opacity: 0,
@@ -238,7 +238,7 @@ function LockDisplay({ status }: { status: string }) {
 
       {phase === "locked" && (
         <p style={{
-          fontSize: 12, color: "rgba(255,255,255,.3)",
+          fontSize: 12, color: "rgba(243,233,210,.4)",
           textAlign: "center", lineHeight: 1.5, margin: 0,
         }}>
           Disponible bientôt · Notification à l&apos;ouverture
@@ -246,7 +246,7 @@ function LockDisplay({ status }: { status: string }) {
       )}
       {phase === "unlocking" && (
         <p style={{
-          fontSize: 13, color: "#C0DD97", fontWeight: 600,
+          fontSize: 13, color: "#8FD9AF", fontWeight: 600,
           animation: "fadeUp .4s ease", margin: 0,
         }}>
           🔓 Tournoi déverrouillé !
@@ -263,185 +263,149 @@ function TournamentCard({
   t: Tournament; user: User | null;
   onJoin: (id: string) => void; joining: string | null; hasPlayed: boolean;
 }) {
-  const pct = Math.min(100, Math.round((t.player_count / t.max_players) * 100));
-  const isFull = t.player_count >= t.max_players;
-  const hasCoins = !!user && user.coins >= t.entry_coins;
-  const prizeNow = getPrize(Math.max(t.player_count, t.min_players));
+  const pct       = Math.min(100, Math.round((t.player_count / t.max_players) * 100));
+  const isFull    = t.player_count >= t.max_players;
+  const hasCoins  = !!user && user.coins >= t.entry_coins;
+  const prizeNow  = getPrize(Math.max(t.player_count, t.min_players));
   const isJoining = joining === t.id;
-  const canJoin = t.status === "active" && !isFull && hasCoins && !hasPlayed;
-  const isActive = t.status === "active";
+  const canJoin   = t.status === "active" && !isFull && hasCoins && !hasPlayed;
+  const isActive   = t.status === "active";
   const isFinished = t.status === "finished" || t.status === "cancelled";
 
-  const statusLabel =
-    t.status === "upcoming"
-      ? "Bientôt"
-      : t.status === "active"
-      ? "En cours"
-      : t.status === "finished"
-      ? "Terminé"
-      : "Annulé";
-
   return (
-    <div
-      style={{
-        background: isActive
-          ? "linear-gradient(180deg,#141b12,#0d0f0d)"
-          : "linear-gradient(180deg,#171713,#0d0d0b)",
-        border: isActive
-          ? "1px solid rgba(192,221,151,.38)"
-          : "1px solid rgba(250,204,21,.16)",
-        borderRadius: 18,
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        boxShadow: isActive
-          ? "0 0 34px rgba(151,196,89,.10)"
-          : "0 0 24px rgba(250,204,21,.04)",
-        animation: "cardIn .35s ease both",
-      }}
-    >
-      <div
-        style={{
-          padding: "16px",
-          borderBottom: "1px solid rgba(255,255,255,.07)",
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-        }}
-      >
-        <div
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 14,
-            flexShrink: 0,
-            background: isActive ? "rgba(192,221,151,.13)" : "rgba(250,204,21,.10)",
-            border: isActive
-              ? "1px solid rgba(192,221,151,.35)"
-              : "1px solid rgba(250,204,21,.25)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: isActive ? "#C0DD97" : "#facc15",
-          }}
-        >
-          <i className={`ti ${GAME_ICONS[t.game_type]}`} style={{ fontSize: 21 }} />
+    <div style={{
+      background: "linear-gradient(160deg,#0E1F16,#081209)",
+      border: isActive
+        ? "1px solid rgba(212,175,106,.3)"
+        : isFinished
+          ? "0.5px solid rgba(212,175,106,.09)"
+          : "0.5px solid rgba(212,175,106,.16)",
+      borderRadius: 6, overflow: "hidden",
+      display: "flex", flexDirection: "column",
+      animation: "cardIn .4s ease both",
+      boxShadow: isActive ? "0 8px 24px rgba(0,0,0,.4)" : "0 6px 18px rgba(0,0,0,.28)",
+      transition: "border .6s, box-shadow .6s",
+    }}>
+
+      {/* Header */}
+      <div style={{
+        padding: "13px 15px",
+        borderBottom: "0.5px solid rgba(212,175,106,.14)",
+        display: "flex", alignItems: "center", gap: 10,
+      }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: 4, flexShrink: 0,
+          background: isActive ? "rgba(111,191,142,.1)" : "rgba(212,175,106,.09)",
+          border: isActive
+            ? "0.5px solid rgba(111,191,142,.24)"
+            : "0.5px solid rgba(212,175,106,.22)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: isActive ? "#8FD9AF" : "#D4AF6A",
+          transition: "all .5s",
+        }}>
+          <i className={`ti ${GAME_ICONS[t.game_type]}`} style={{ fontSize: 17 }} aria-hidden="true" />
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p
-            style={{
-              fontSize: 17,
-              fontWeight: 700,
-              color: "#fff",
-              lineHeight: 1.2,
-              margin: 0,
-            }}
-          >
-            {t.name}
-          </p>
-
-          <p
-            style={{
-              fontSize: 13,
-              color: "rgba(255,255,255,.62)",
-              marginTop: 5,
-            }}
-          >
+          <p style={{
+            fontSize: 14, fontWeight: 600, color: "#F3E9D2",
+            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+            fontFamily: "'Playfair Display', serif",
+          }}>{t.name}</p>
+          <p style={{ fontSize: 11, color: "rgba(243,233,210,.42)", marginTop: 2 }}>
             {GAME_LABELS[t.game_type]} · {t.play_window} min · {t.entry_coins} coins
           </p>
         </div>
 
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            fontSize: 12,
-            fontWeight: 700,
-            padding: "6px 10px",
-            borderRadius: 999,
-            flexShrink: 0,
-            background: isActive
-              ? "rgba(192,221,151,.14)"
-              : isFinished
-              ? "rgba(255,255,255,.07)"
-              : "rgba(250,204,21,.12)",
-            color: isActive ? "#C0DD97" : isFinished ? "rgba(255,255,255,.48)" : "#facc15",
-            border: isActive
-              ? "1px solid rgba(192,221,151,.34)"
-              : isFinished
-              ? "1px solid rgba(255,255,255,.10)"
-              : "1px solid rgba(250,204,21,.25)",
-          }}
-        >
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: 5,
+          fontSize: 11, fontWeight: 600, padding: "3px 9px",
+          borderRadius: 4, flexShrink: 0,
+          background: isActive ? "rgba(111,191,142,.1)"
+            : isFinished ? "rgba(243,233,210,.04)"
+            : "rgba(212,175,106,.09)",
+          color: isActive ? "#8FD9AF"
+            : isFinished ? "rgba(243,233,210,.38)"
+            : "#D4AF6A",
+          border: isActive ? "0.5px solid rgba(111,191,142,.28)"
+            : isFinished ? "0.5px solid rgba(243,233,210,.08)"
+            : "0.5px solid rgba(212,175,106,.24)",
+          transition: "all .5s",
+        }}>
           {isActive && (
-            <span
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                background: "#97C459",
-                animation: "pulseDot 1.5s infinite",
-              }}
-            />
+            <span style={{
+              width: 5, height: 5, borderRadius: "50%",
+              background: "#6FBF8E", flexShrink: 0,
+              animation: "pulseDot 1.5s infinite",
+            }} />
           )}
-          {statusLabel}
+          {t.status === "upcoming" ? "À venir"
+            : t.status === "active" ? "En cours"
+            : t.status === "finished" ? "Terminé" : "Annulé"}
         </span>
       </div>
 
-      <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr",
-            gap: 8,
-          }}
-        >
-          <PrizeLine icon="🥇" label="1ère place" value={isActive ? `${prizeNow} GDS` : "220–440 GDS"} color="#facc15" />
-          <PrizeLine icon="🥈" label="2ème place" value="1 ticket sponsorisé" color="#85B7EB" />
-          <PrizeLine icon="💪" label="Autres" value="Cashback + XP bientôt" color="rgba(255,255,255,.72)" />
-        </div>
+      {/* Body */}
+      <div style={{ padding: "13px 15px", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
 
+        {/* Prizes */}
+        {[
+          {
+            bg: "rgba(212,175,106,.08)", bd: "rgba(212,175,106,.26)",
+            ic: "ti-medal", icC: "#D4AF6A", lbl: "1er place",
+            // FIX 4 : affichage prix dynamique
+            val: isActive ? `${prizeNow} gds` : "220 – 440 gds", vc: "#D4AF6A",
+          },
+          {
+            bg: "rgba(243,233,210,.03)", bd: "rgba(243,233,210,.09)",
+            ic: "ti-ticket", icC: "rgba(243,233,210,.55)", lbl: "2e place",
+            val: "1 ticket sponsorisé", vc: "rgba(243,233,210,.7)",
+          },
+          {
+            bg: "rgba(243,233,210,.02)", bd: "rgba(243,233,210,.07)",
+            ic: "ti-users", icC: "rgba(243,233,210,.32)", lbl: "Autres",
+            val: "5 coins + XP", vc: "rgba(243,233,210,.4)",
+          },
+        ].map((p, i) => (
+          <div key={i} style={{
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            padding: "7px 10px", borderRadius: 4,
+            background: p.bg, border: `0.5px solid ${p.bd}`,
+          }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "rgba(243,233,210,.55)" }}>
+              <i className={`ti ${p.ic}`} style={{ fontSize: 13, color: p.icC }} aria-hidden="true" />
+              {p.lbl}
+            </span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: p.vc }}>{p.val}</span>
+          </div>
+        ))}
+
+        {/* FIX 4 : Grille prix selon joueurs — upcoming seulement */}
         {t.status === "upcoming" && (
-          <div
-            style={{
-              background: "rgba(250,204,21,.06)",
-              border: "1px solid rgba(250,204,21,.14)",
-              borderRadius: 13,
-              padding: 12,
-            }}
-          >
-            <p
-              style={{
-                fontSize: 11,
-                textTransform: "uppercase",
-                letterSpacing: ".1em",
-                color: "rgba(250,204,21,.75)",
-                marginBottom: 8,
-                fontWeight: 700,
-              }}
-            >
-              Gain 1er selon joueurs
+          <div style={{
+            background: "rgba(243,233,210,.02)",
+            border: "0.5px solid rgba(243,233,210,.06)",
+            borderRadius: 4, padding: "9px 11px",
+          }}>
+            <p style={{
+              fontSize: 10, textTransform: "uppercase", letterSpacing: ".1em",
+              color: "rgba(243,233,210,.3)", marginBottom: 7, fontWeight: 700,
+            }}>
+              Prize 1er selon joueurs
             </p>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 6 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 3 }}>
               {[5, 6, 7, 8, 9, 10].map((n) => (
-                <div
-                  key={n}
-                  style={{
-                    textAlign: "center",
-                    padding: "7px 4px",
-                    borderRadius: 10,
-                    background: t.player_count >= n ? "rgba(250,204,21,.12)" : "rgba(255,255,255,.04)",
-                    border: t.player_count >= n
-                      ? "1px solid rgba(250,204,21,.24)"
-                      : "1px solid rgba(255,255,255,.06)",
-                  }}
-                >
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,.58)" }}>{n}j</div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "#facc15" }}>
-                    {getPrize(n)}
+                <div key={n} style={{
+                  textAlign: "center", padding: "4px", borderRadius: 4,
+                  background: t.player_count >= n ? "rgba(212,175,106,.09)" : "rgba(243,233,210,.02)",
+                  border: `0.5px solid ${t.player_count >= n ? "rgba(212,175,106,.24)" : "rgba(243,233,210,.05)"}`,
+                }}>
+                  <div style={{ fontSize: 10, color: "rgba(243,233,210,.32)" }}>{n}j</div>
+                  <div style={{
+                    fontSize: 11, fontWeight: 600,
+                    color: t.player_count >= n ? "#D4AF6A" : "rgba(243,233,210,.42)",
+                  }}>
+                    {getPrize(n)}{n === 10 ? " ✦" : ""}
                   </div>
                 </div>
               ))}
@@ -449,154 +413,120 @@ function TournamentCard({
           </div>
         )}
 
+        {/* FIX 2 : Cadenas — animé selon statut, stable entre re-renders */}
         <LockDisplay status={t.status} />
 
+        {/* Compteur joueurs */}
         {!isFinished && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                fontSize: 13,
-                color: "rgba(255,255,255,.66)",
-              }}
-            >
-              <span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            <div style={{
+              display: "flex", justifyContent: "space-between",
+              fontSize: 12, color: "rgba(243,233,210,.42)",
+            }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{
+                  width: 5, height: 5, borderRadius: "50%", flexShrink: 0,
+                  background: isFull ? "#C4432D" : isActive ? "#6FBF8E" : "#D4AF6A",
+                  animation: isActive ? "pulseDot 1.5s infinite" : "none",
+                }} />
                 {t.player_count} / {t.max_players} joueurs
               </span>
               <span>min {t.min_players}</span>
             </div>
-
-            <div style={{ height: 6, borderRadius: 999, background: "rgba(255,255,255,.08)", overflow: "hidden" }}>
-              <div
-                style={{
-                  height: "100%",
-                  borderRadius: 999,
-                  background: isActive
-                    ? "linear-gradient(90deg,#97C459,#C0DD97)"
-                    : "linear-gradient(90deg,#facc15,#f59e0b)",
-                  width: `${pct}%`,
-                  transition: "width .6s ease",
-                }}
-              />
+            <div style={{ height: 3, borderRadius: 2, background: "rgba(243,233,210,.08)", overflow: "hidden" }}>
+              <div style={{
+                height: "100%", borderRadius: 2,
+                background: isActive
+                  ? "linear-gradient(90deg,#6FBF8E,#B9DEC6)"
+                  : "linear-gradient(90deg,#B08A46,#D4AF6A)",
+                width: `${pct}%`, transition: "width .6s ease",
+              }} />
             </div>
           </div>
         )}
 
+        {/* Alertes */}
         {!hasCoins && user && isActive && !hasPlayed && (
-          <div
-            style={{
-              background: "rgba(239,68,68,.10)",
-              border: "1px solid rgba(239,68,68,.28)",
-              borderRadius: 12,
-              padding: "10px 12px",
-              fontSize: 13,
-              color: "#fca5a5",
-              lineHeight: 1.45,
-            }}
-          >
+          <div style={{
+            background: "rgba(196,67,45,.08)", border: "0.5px solid rgba(196,67,45,.22)",
+            borderRadius: 4, padding: "7px 10px", fontSize: 12,
+            color: "#E39485", display: "flex", gap: 6, lineHeight: 1.5,
+          }}>
+            <i className="ti ti-coin-off" style={{ fontSize: 13, flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
             Coins insuffisants — tu as {user.coins} coins, il en faut {t.entry_coins}.
           </div>
         )}
 
         {hasPlayed && isActive && (
-          <div
-            style={{
-              background: "rgba(192,221,151,.09)",
-              border: "1px solid rgba(192,221,151,.24)",
-              borderRadius: 12,
-              padding: "10px 12px",
-              fontSize: 13,
-              color: "#C0DD97",
-            }}
-          >
-            ✅ Score enregistré · Attends la fin du tournoi.
+          <div style={{
+            background: "rgba(111,191,142,.08)", border: "0.5px solid rgba(111,191,142,.22)",
+            borderRadius: 4, padding: "7px 10px", fontSize: 12,
+            color: "#8FD9AF", display: "flex", alignItems: "center", gap: 6,
+          }}>
+            <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" />
+            Score enregistré · Attends la fin du tournoi.
           </div>
         )}
 
+        {/* FIX 3 : Countdown stable */}
         <Countdown startsAt={t.starts_at} playWindow={t.play_window} status={t.status} />
 
+        {/* Boutons */}
         <div style={{ marginTop: "auto" }}>
           {isActive && !hasPlayed && (
             <button
               disabled={!canJoin || isJoining}
               onClick={() => onJoin(t.id)}
               style={{
-                width: "100%",
-                borderRadius: 14,
-                padding: "14px 12px",
-                fontSize: 15,
-                fontWeight: 900,
+                width: "100%", borderRadius: 4, padding: 10,
+                fontSize: 13, fontWeight: 700,
                 cursor: canJoin ? "pointer" : "not-allowed",
                 background: canJoin
-                  ? "linear-gradient(135deg,#C0DD97,#97C459)"
-                  : "rgba(255,255,255,.05)",
+                  ? "linear-gradient(135deg,#D4AF6A,#B08A46)"
+                  : "rgba(243,233,210,.04)",
                 border: canJoin
-                  ? "1px solid rgba(192,221,151,.55)"
-                  : "1px solid rgba(255,255,255,.10)",
-                color: canJoin ? "#101807" : "rgba(255,255,255,.35)",
-                opacity: canJoin ? 1 : 0.6,
+                  ? "1px solid #D4AF6A"
+                  : "0.5px solid rgba(243,233,210,.09)",
+                color: canJoin ? "#1a1204" : "rgba(243,233,210,.28)",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                opacity: canJoin ? 1 : .5,
+                transition: "all .2s",
               }}
             >
-              {isJoining ? "Préparation..." : isFull ? "Complet" : !hasCoins ? "Coins insuffisants" : `Jouer — ${t.entry_coins} coins`}
+              {isJoining ? (
+                <>
+                  <span style={{
+                    width: 12, height: 12, borderRadius: "50%",
+                    border: "2px solid rgba(26,18,4,.3)",
+                    borderTopColor: "#1a1204",
+                    animation: "spin .7s linear infinite",
+                    display: "inline-block",
+                  }} />
+                  Paiement…
+                </>
+              ) : isFull ? "Complet" : !hasCoins ? "Coins insuffisants" : (
+                <>
+                  <i className="ti ti-player-play" style={{ fontSize: 13 }} aria-hidden="true" />
+                  Miser — {t.entry_coins} coins
+                </>
+              )}
             </button>
           )}
 
           {isFinished && (
-            <Link
-              href={`/tournaments/pro/${t.id}/results`}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "100%",
-                borderRadius: 14,
-                padding: "14px 12px",
-                fontSize: 14,
-                fontWeight: 800,
-                background: "rgba(255,255,255,.06)",
-                border: "1px solid rgba(255,255,255,.12)",
-                color: "rgba(255,255,255,.72)",
-                textDecoration: "none",
-              }}
-            >
-              Voir les résultats 🏆
+            <Link href={`/tournaments/pro/${t.id}/results`} style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              width: "100%", borderRadius: 4, padding: 10, fontSize: 13, fontWeight: 600,
+              background: "rgba(243,233,210,.03)",
+              border: "0.5px solid rgba(243,233,210,.08)",
+              color: "rgba(243,233,210,.42)", textDecoration: "none",
+            }}>
+              <i className="ti ti-trophy" style={{ fontSize: 13 }} aria-hidden="true" />
+              Voir les résultats
             </Link>
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function PrizeLine({
-  icon,
-  label,
-  value,
-  color,
-}: {
-  icon: string;
-  label: string;
-  value: string;
-  color: string;
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        gap: 10,
-        padding: "11px 12px",
-        borderRadius: 12,
-        background: "rgba(255,255,255,.045)",
-        border: "1px solid rgba(255,255,255,.075)",
-      }}
-    >
-      <span style={{ fontSize: 13, color: "rgba(255,255,255,.68)" }}>
-        {icon} {label}
-      </span>
-      <span style={{ fontSize: 14, fontWeight: 800, color }}>{value}</span>
     </div>
   );
 }
@@ -617,27 +547,27 @@ function NotifPanel({ notifs, onRead, onClose }: {
   return (
     <div style={{
       position: "absolute", right: 0, top: 46, width: 296,
-      background: "#191923",
-      border: "0.5px solid rgba(255,255,255,.1)",
-      borderRadius: 14, overflow: "hidden", zIndex: 100,
+      background: "#0E1F16",
+      border: "0.5px solid rgba(212,175,106,.18)",
+      borderRadius: 6, overflow: "hidden", zIndex: 100,
       boxShadow: "0 20px 60px rgba(0,0,0,.75)",
       animation: "fadeUp .2s ease",
     }}>
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "11px 13px",
-        borderBottom: "0.5px solid rgba(255,255,255,.06)",
+        borderBottom: "0.5px solid rgba(212,175,106,.12)",
       }}>
-        <p style={{ fontSize: 13, fontWeight: 500, color: "#fff" }}>Notifications</p>
+        <p style={{ fontSize: 13, fontWeight: 600, color: "#F3E9D2", fontFamily: "'Playfair Display', serif" }}>Notifications</p>
         <button onClick={onClose} style={{
           background: "none", border: "none", cursor: "pointer",
-          color: "rgba(255,255,255,.35)", padding: 2,
+          color: "rgba(243,233,210,.4)", padding: 2,
         }}>
           <i className="ti ti-x" style={{ fontSize: 15 }} aria-hidden="true" />
         </button>
       </div>
       {notifs.length === 0 ? (
-        <p style={{ padding: "20px", textAlign: "center", fontSize: 13, color: "rgba(255,255,255,.25)" }}>
+        <p style={{ padding: "20px", textAlign: "center", fontSize: 13, color: "rgba(243,233,210,.3)" }}>
           Aucune notification
         </p>
       ) : (
@@ -645,22 +575,22 @@ function NotifPanel({ notifs, onRead, onClose }: {
           {notifs.map((n) => (
             <div key={n.id} onClick={() => onRead(n.id)} style={{
               padding: "10px 13px",
-              borderBottom: "0.5px solid rgba(255,255,255,.04)",
+              borderBottom: "0.5px solid rgba(212,175,106,.08)",
               cursor: "pointer",
-              background: !n.is_read ? "rgba(250,199,117,.03)" : "transparent",
+              background: !n.is_read ? "rgba(212,175,106,.04)" : "transparent",
               display: "flex", gap: 9, alignItems: "flex-start",
             }}>
               <i className={`ti ${ICONS[n.type] ?? "ti-bell"}`}
-                style={{ fontSize: 14, color: "#FAC775", flexShrink: 0, marginTop: 1 }}
+                style={{ fontSize: 14, color: "#D4AF6A", flexShrink: 0, marginTop: 1 }}
                 aria-hidden="true" />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 500, color: "#fff" }}>{n.title}</p>
-                <p style={{ fontSize: 12, color: "rgba(255,255,255,.38)", lineHeight: 1.5, marginTop: 2 }}>{n.message}</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "#F3E9D2" }}>{n.title}</p>
+                <p style={{ fontSize: 12, color: "rgba(243,233,210,.42)", lineHeight: 1.5, marginTop: 2 }}>{n.message}</p>
               </div>
               {!n.is_read && (
                 <span style={{
                   width: 6, height: 6, borderRadius: "50%",
-                  background: "#EF9F27", flexShrink: 0, marginTop: 3,
+                  background: "#D4AF6A", flexShrink: 0, marginTop: 3,
                 }} />
               )}
             </div>
@@ -808,15 +738,15 @@ export default function TournamentsProPage() {
   if (loading) return (
     <main style={{
       minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-      background: "radial-gradient(circle at top,rgba(239,159,39,.07),transparent 40%),#09090b",
+      background: "radial-gradient(circle at top,rgba(212,175,106,.07),transparent 40%),#08130D",
     }}>
       <div style={{ textAlign: "center" }}>
         <div style={{
           width: 38, height: 38, borderRadius: "50%", margin: "0 auto 12px",
-          border: "2px solid rgba(239,159,39,.22)", borderTopColor: "#EF9F27",
+          border: "2px solid rgba(212,175,106,.22)", borderTopColor: "#D4AF6A",
           animation: "spin .8s linear infinite",
         }} />
-        <p style={{ fontSize: 13, color: "rgba(255,255,255,.3)" }}>Chargement…</p>
+        <p style={{ fontSize: 13, color: "rgba(243,233,210,.35)" }}>Chargement…</p>
       </div>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </main>
@@ -824,6 +754,7 @@ export default function TournamentsProPage() {
 
   return (
     <>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" />
       <style>{`
         @keyframes spin       { to { transform: rotate(360deg) } }
         @keyframes pulseDot   { 0%,100%{opacity:.55;transform:scale(1)} 50%{opacity:1;transform:scale(1.35)} }
@@ -834,14 +765,14 @@ export default function TournamentsProPage() {
         @keyframes cardIn     { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
         @keyframes fadeUp     { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
         @keyframes toastIn    { from{opacity:0;transform:translateX(14px)} to{opacity:1;transform:translateX(0)} }
-        .nav-l:hover          { background:rgba(255,255,255,.05)!important; color:#FAC775!important }
+        .nav-l:hover          { background:rgba(212,175,106,.07)!important; color:#D4AF6A!important }
         @media(max-width:768px){ .lg-sd{display:none!important} .main-c{margin-left:0!important;padding-top:62px!important} }
       `}</style>
 
       <main style={{
         minHeight: "100vh",
-        background: "radial-gradient(circle at 65% 0%,rgba(239,159,39,.04),transparent 35%),#09090b",
-        color: "#fff", fontFamily: "var(--font-sans,sans-serif)",
+        background: "radial-gradient(circle at 65% 0%,rgba(212,175,106,.05),transparent 35%),#08130D",
+        color: "#F3E9D2", fontFamily: "'Inter',var(--font-sans,sans-serif)",
       }}>
 
         {/* Toast */}
@@ -849,13 +780,13 @@ export default function TournamentsProPage() {
           <div style={{
             position: "fixed", top: 18, right: 18, zIndex: 300,
             display: "flex", alignItems: "center", gap: 8,
-            background: toast.ok ? "rgba(85,136,28,.92)" : "rgba(158,42,42,.92)",
-            border: `0.5px solid ${toast.ok ? "rgba(192,221,151,.35)" : "rgba(240,149,117,.35)"}`,
-            borderRadius: 11, padding: "9px 15px",
-            fontSize: 13, fontWeight: 500, color: "#fff",
+            background: toast.ok ? "rgba(15,58,38,.94)" : "rgba(90,32,26,.94)",
+            border: `0.5px solid ${toast.ok ? "rgba(111,191,142,.4)" : "rgba(196,67,45,.4)"}`,
+            borderRadius: 6, padding: "9px 15px",
+            fontSize: 13, fontWeight: 600, color: "#F3E9D2",
             animation: "toastIn .3s ease", backdropFilter: "blur(12px)",
           }}>
-            <i className={`ti ${toast.ok ? "ti-check" : "ti-x"}`} style={{ fontSize: 14 }} aria-hidden="true" />
+            <i className={`ti ${toast.ok ? "ti-check" : "ti-x"}`} style={{ fontSize: 14, color: toast.ok ? "#8FD9AF" : "#E39485" }} aria-hidden="true" />
             {toast.msg}
           </div>
         )}
@@ -863,31 +794,32 @@ export default function TournamentsProPage() {
         {/* Sidebar desktop */}
         <aside className="lg-sd" style={{
           position: "fixed", left: 0, top: 0, width: 268, height: "100vh",
-          background: "#0d0d14",
-          borderRight: "0.5px solid rgba(255,255,255,.06)",
+          background: "#0A1810",
+          borderRight: "0.5px solid rgba(212,175,106,.14)",
           padding: 18, display: "flex", flexDirection: "column", zIndex: 30,
         }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", marginBottom: 18 }}>
             <span style={{
-              width: 34, height: 34, borderRadius: 9, background: "#EF9F27",
+              width: 34, height: 34, borderRadius: 4, background: "#D4AF6A",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontWeight: 700, fontSize: 16, color: "#412402",
+              fontWeight: 700, fontSize: 16, color: "#1a1204",
+              fontFamily: "'Playfair Display', serif",
             }}>Q</span>
-            <span style={{ fontSize: 16, fontWeight: 700, color: "#FAC775" }}>QuizArena</span>
+            <span style={{ fontSize: 16, fontWeight: 700, color: "#D4AF6A", fontFamily: "'Playfair Display', serif", letterSpacing: ".02em" }}>QuizArena</span>
           </Link>
 
           <div style={{
-            background: "rgba(255,255,255,.03)",
-            border: "0.5px solid rgba(255,255,255,.06)",
-            borderRadius: 11, padding: "10px 12px", marginBottom: 13,
+            background: "rgba(212,175,106,.04)",
+            border: "0.5px solid rgba(212,175,106,.14)",
+            borderRadius: 6, padding: "10px 12px", marginBottom: 13,
           }}>
-            <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: ".1em", color: "rgba(255,255,255,.22)" }}>Connecté</p>
-            <p style={{ fontSize: 13, fontWeight: 500, color: "#fff", marginTop: 3 }}>{user?.full_name}</p>
+            <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: ".1em", color: "rgba(243,233,210,.32)" }}>Connecté</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: "#F3E9D2", marginTop: 3 }}>{user?.full_name}</p>
             <div style={{ display: "flex", gap: 10, marginTop: 3 }}>
-              <span style={{ fontSize: 11, color: "#FAC775" }}>
+              <span style={{ fontSize: 11, color: "#D4AF6A" }}>
                 <i className="ti ti-coin" style={{ fontSize: 10 }} aria-hidden="true" /> {user?.coins}
               </span>
-              <span style={{ fontSize: 11, color: "rgba(255,255,255,.3)" }}>
+              <span style={{ fontSize: 11, color: "rgba(243,233,210,.4)" }}>
                 <i className="ti ti-ticket" style={{ fontSize: 10 }} aria-hidden="true" /> {user?.tickets}
               </span>
             </div>
@@ -896,12 +828,12 @@ export default function TournamentsProPage() {
           <nav style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 1 }}>
             {NAV.map(([href, lbl]) => (
               <Link key={href} href={href} className="nav-l" style={{
-                display: "block", padding: "8px 12px", borderRadius: 8,
+                display: "block", padding: "8px 12px", borderRadius: 4,
                 fontSize: 13, textDecoration: "none", transition: "all .15s",
-                background: href === "/tournaments/pro" ? "rgba(239,159,39,.09)" : "transparent",
-                color: href === "/tournaments/pro" ? "#FAC775" : "rgba(255,255,255,.48)",
-                border: href === "/tournaments/pro" ? "0.5px solid rgba(239,159,39,.16)" : "0.5px solid transparent",
-                fontWeight: href === "/tournaments/pro" ? 500 : 400,
+                background: href === "/tournaments/pro" ? "rgba(212,175,106,.1)" : "transparent",
+                color: href === "/tournaments/pro" ? "#D4AF6A" : "rgba(243,233,210,.5)",
+                border: href === "/tournaments/pro" ? "0.5px solid rgba(212,175,106,.2)" : "0.5px solid transparent",
+                fontWeight: href === "/tournaments/pro" ? 600 : 400,
               }}>{lbl}</Link>
             ))}
           </nav>
@@ -909,11 +841,11 @@ export default function TournamentsProPage() {
           <button
             onClick={async () => { await supabase.auth.signOut(); router.replace("/login"); }}
             style={{
-              marginTop: 10, width: "100%", borderRadius: 8, padding: "8px 12px",
+              marginTop: 10, width: "100%", borderRadius: 4, padding: "8px 12px",
               fontSize: 13, cursor: "pointer",
-              background: "rgba(226,75,74,.05)",
-              border: "0.5px solid rgba(226,75,74,.15)",
-              color: "#F09595", fontWeight: 500,
+              background: "rgba(196,67,45,.06)",
+              border: "0.5px solid rgba(196,67,45,.18)",
+              color: "#E39485", fontWeight: 600,
             }}
           >Déconnexion</button>
         </aside>
@@ -923,15 +855,15 @@ export default function TournamentsProPage() {
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
             style={{
-              width: 36, height: 36, borderRadius: 9, cursor: "pointer",
-              background: "rgba(13,13,20,.88)",
-              border: "0.5px solid rgba(255,255,255,.09)",
+              width: 36, height: 36, borderRadius: 4, cursor: "pointer",
+              background: "rgba(10,24,16,.9)",
+              border: "0.5px solid rgba(212,175,106,.2)",
               display: "flex", alignItems: "center", justifyContent: "center",
               backdropFilter: "blur(12px)",
             }}
           >
             <i className={`ti ${mobileOpen ? "ti-x" : "ti-menu-2"}`}
-              style={{ fontSize: 17, color: "#FAC775" }} aria-hidden="true" />
+              style={{ fontSize: 17, color: "#D4AF6A" }} aria-hidden="true" />
           </button>
         </div>
 
@@ -942,13 +874,13 @@ export default function TournamentsProPage() {
             }} />
             <aside style={{
               position: "fixed", left: 0, top: 0, width: 268, height: "100vh",
-              background: "#0d0d14",
-              borderRight: "0.5px solid rgba(255,255,255,.06)",
+              background: "#0A1810",
+              borderRight: "0.5px solid rgba(212,175,106,.14)",
               padding: 18, zIndex: 50, display: "flex", flexDirection: "column", overflowY: "auto",
             }}>
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
                 <button onClick={() => setMobileOpen(false)}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,.3)" }}>
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(243,233,210,.35)" }}>
                   <i className="ti ti-x" style={{ fontSize: 19 }} aria-hidden="true" />
                 </button>
               </div>
@@ -956,29 +888,30 @@ export default function TournamentsProPage() {
                 display: "flex", alignItems: "center", gap: 8, textDecoration: "none", marginBottom: 13,
               }}>
                 <span style={{
-                  width: 32, height: 32, borderRadius: 9, background: "#EF9F27",
+                  width: 32, height: 32, borderRadius: 4, background: "#D4AF6A",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontWeight: 700, fontSize: 15, color: "#412402",
+                  fontWeight: 700, fontSize: 15, color: "#1a1204",
+                  fontFamily: "'Playfair Display', serif",
                 }}>Q</span>
-                <span style={{ fontSize: 15, fontWeight: 700, color: "#FAC775" }}>QuizArena</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: "#D4AF6A", fontFamily: "'Playfair Display', serif" }}>QuizArena</span>
               </Link>
               <div style={{
-                background: "rgba(255,255,255,.03)",
-                border: "0.5px solid rgba(255,255,255,.06)",
-                borderRadius: 10, padding: "8px 11px", marginBottom: 11,
+                background: "rgba(212,175,106,.04)",
+                border: "0.5px solid rgba(212,175,106,.14)",
+                borderRadius: 5, padding: "8px 11px", marginBottom: 11,
               }}>
-                <p style={{ fontSize: 12, color: "#fff", fontWeight: 500 }}>{user?.full_name}</p>
-                <p style={{ fontSize: 11, color: "#FAC775", marginTop: 2 }}>
+                <p style={{ fontSize: 12, color: "#F3E9D2", fontWeight: 600 }}>{user?.full_name}</p>
+                <p style={{ fontSize: 11, color: "#D4AF6A", marginTop: 2 }}>
                   {user?.coins} coins · {user?.tickets} tickets
                 </p>
               </div>
               <nav style={{ display: "flex", flexDirection: "column", gap: 1 }}>
                 {NAV.map(([href, lbl]) => (
                   <Link key={href} href={href} onClick={() => setMobileOpen(false)} style={{
-                    display: "block", padding: "8px 11px", borderRadius: 8,
+                    display: "block", padding: "8px 11px", borderRadius: 4,
                     fontSize: 13, textDecoration: "none",
-                    background: href === "/tournaments/pro" ? "rgba(239,159,39,.09)" : "transparent",
-                    color: href === "/tournaments/pro" ? "#FAC775" : "rgba(255,255,255,.45)",
+                    background: href === "/tournaments/pro" ? "rgba(212,175,106,.1)" : "transparent",
+                    color: href === "/tournaments/pro" ? "#D4AF6A" : "rgba(243,233,210,.48)",
                   }}>{lbl}</Link>
                 ))}
               </nav>
@@ -991,17 +924,17 @@ export default function TournamentsProPage() {
 
           {/* Hero */}
           <div style={{
-            background: "rgba(255,255,255,.022)",
-            border: "0.5px solid rgba(255,255,255,.06)",
-            borderRadius: 15, padding: "18px 20px", marginBottom: 16,
+            background: "rgba(212,175,106,.025)",
+            border: "0.5px solid rgba(212,175,106,.16)",
+            borderRadius: 6, padding: "18px 20px", marginBottom: 16,
           }}>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
               <div>
-                <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: ".12em", color: "rgba(255,255,255,.22)", marginBottom: 5 }}>
-                  Compétition payante
+                <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: ".14em", color: "#D4AF6A", marginBottom: 5, fontWeight: 700 }}>
+                  Table Pro · Compétition payante
                 </p>
-                <h1 style={{ fontSize: 22, fontWeight: 500, color: "#fff", marginBottom: 4 }}>Tournois Pro</h1>
-                <p style={{ fontSize: 13, color: "rgba(255,255,255,.38)", lineHeight: 1.6, maxWidth: 420 }}>
+                <h1 style={{ fontSize: 22, fontWeight: 600, color: "#F3E9D2", marginBottom: 4, fontFamily: "'Playfair Display', serif" }}>Tournois Pro</h1>
+                <p style={{ fontSize: 13, color: "rgba(243,233,210,.55)", lineHeight: 1.6, maxWidth: 420 }}>
                   50 coins · Prize 220–440 gds · Cadenas retiré automatiquement à l&apos;heure H
                 </p>
               </div>
@@ -1012,20 +945,20 @@ export default function TournamentsProPage() {
                   onClick={() => setShowNotifs(!showNotifs)}
                   aria-label="Notifications"
                   style={{
-                    width: 36, height: 36, borderRadius: 9, cursor: "pointer",
-                    background: "rgba(255,255,255,.04)",
-                    border: "0.5px solid rgba(255,255,255,.08)",
+                    width: 36, height: 36, borderRadius: 4, cursor: "pointer",
+                    background: "rgba(212,175,106,.06)",
+                    border: "0.5px solid rgba(212,175,106,.2)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     position: "relative",
                   }}
                 >
-                  <i className="ti ti-bell" style={{ fontSize: 16, color: "rgba(255,255,255,.5)" }} aria-hidden="true" />
+                  <i className="ti ti-bell" style={{ fontSize: 16, color: "rgba(243,233,210,.6)" }} aria-hidden="true" />
                   {unread > 0 && (
                     <span style={{
                       position: "absolute", top: -4, right: -4,
                       width: 15, height: 15, borderRadius: "50%",
-                      background: "#E24B4A", color: "#fff",
-                      fontSize: 9, fontWeight: 500,
+                      background: "#C4432D", color: "#fff",
+                      fontSize: 9, fontWeight: 600,
                       display: "flex", alignItems: "center", justifyContent: "center",
                     }}>
                       {unread > 9 ? "9+" : unread}
@@ -1038,21 +971,20 @@ export default function TournamentsProPage() {
               </div>
             </div>
 
-            {/* Stats header */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 8, marginTop: 14 }}>
+            {/* Stats header — commission retirée */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 8, marginTop: 14 }}>
               {[
-                { val: "50",      label: "coins entrée", c: "#FAC775" },
-                { val: "5–10",    label: "joueurs",      c: "#fff" },
-                { val: "220–440", label: "gds 1er",      c: "#C0DD97" },
-                { val: "12%",     label: "commission",   c: "rgba(255,255,255,.35)" },
+                { val: "50",      label: "coins entrée", c: "#D4AF6A" },
+                { val: "5–10",    label: "joueurs",      c: "#F3E9D2" },
+                { val: "220–440", label: "gds 1er",      c: "#8FD9AF" },
               ].map(m => (
                 <div key={m.label} style={{
-                  background: "rgba(255,255,255,.03)",
-                  border: "0.5px solid rgba(255,255,255,.05)",
-                  borderRadius: 10, padding: "8px 10px", textAlign: "center",
+                  background: "rgba(212,175,106,.04)",
+                  border: "0.5px solid rgba(212,175,106,.12)",
+                  borderRadius: 4, padding: "8px 10px", textAlign: "center",
                 }}>
-                  <p style={{ fontSize: 15, fontWeight: 500, color: m.c }}>{m.val}</p>
-                  <p style={{ fontSize: 10, color: "rgba(255,255,255,.28)", marginTop: 1 }}>{m.label}</p>
+                  <p style={{ fontSize: 15, fontWeight: 600, color: m.c, fontFamily: "'Playfair Display', serif" }}>{m.val}</p>
+                  <p style={{ fontSize: 10, color: "rgba(243,233,210,.32)", marginTop: 1 }}>{m.label}</p>
                 </div>
               ))}
             </div>
@@ -1062,8 +994,8 @@ export default function TournamentsProPage() {
           {active.length > 0 && (
             <div style={{ marginBottom: 26 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#97C459", animation: "pulseDot 1.5s infinite" }} />
-                <p style={{ fontSize: 10, fontWeight: 500, textTransform: "uppercase", letterSpacing: ".08em", color: "rgba(255,255,255,.32)" }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#6FBF8E", animation: "pulseDot 1.5s infinite" }} />
+                <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "rgba(243,233,210,.4)" }}>
                   En cours — joue maintenant
                 </p>
               </div>
@@ -1080,8 +1012,8 @@ export default function TournamentsProPage() {
           {upcoming.length > 0 && (
             <div style={{ marginBottom: 26 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                <i className="ti ti-lock" style={{ fontSize: 11, color: "rgba(255,255,255,.28)" }} aria-hidden="true" />
-                <p style={{ fontSize: 10, fontWeight: 500, textTransform: "uppercase", letterSpacing: ".08em", color: "rgba(255,255,255,.32)" }}>
+                <i className="ti ti-lock" style={{ fontSize: 11, color: "rgba(212,175,106,.4)" }} aria-hidden="true" />
+                <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "rgba(243,233,210,.4)" }}>
                   Bientôt — cadenas actif
                 </p>
               </div>
@@ -1098,8 +1030,8 @@ export default function TournamentsProPage() {
           {finished.length > 0 && (
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                <i className="ti ti-flag-check" style={{ fontSize: 11, color: "rgba(255,255,255,.22)" }} aria-hidden="true" />
-                <p style={{ fontSize: 10, fontWeight: 500, textTransform: "uppercase", letterSpacing: ".08em", color: "rgba(255,255,255,.28)" }}>
+                <i className="ti ti-flag-check" style={{ fontSize: 11, color: "rgba(212,175,106,.3)" }} aria-hidden="true" />
+                <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "rgba(243,233,210,.35)" }}>
                   Terminés
                 </p>
               </div>
@@ -1115,8 +1047,8 @@ export default function TournamentsProPage() {
           {tournaments.length === 0 && (
             <div style={{ textAlign: "center", padding: "70px 20px" }}>
               <p style={{ fontSize: 38, marginBottom: 12 }}>🏆</p>
-              <p style={{ fontSize: 15, fontWeight: 500, color: "#fff", marginBottom: 5 }}>Aucun tournoi disponible</p>
-              <p style={{ fontSize: 12, color: "rgba(255,255,255,.28)" }}>
+              <p style={{ fontSize: 15, fontWeight: 600, color: "#F3E9D2", marginBottom: 5, fontFamily: "'Playfair Display', serif" }}>Aucun tournoi disponible</p>
+              <p style={{ fontSize: 12, color: "rgba(243,233,210,.32)" }}>
                 Les tournois apparaîtront ici dès qu&apos;ils seront créés dans Supabase.
               </p>
             </div>
