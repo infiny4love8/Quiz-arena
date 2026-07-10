@@ -702,34 +702,59 @@ function GameTank({
     return () => { delete (window as any).__tankGetScore; };
   }, []);
 
-  return (
-    <div style={{ position: "relative" }}>
-      {!gameStarted && (
-        <div style={{
-          position: "absolute", top: 0, left: 0, right: 0,
-          textAlign: "center", zIndex: 10, padding: "12px",
-          background: "rgba(5,15,24,0.8)",
-          borderRadius: "14px 14px 0 0",
-          fontSize: 12, color: "#06b6d4", fontWeight: 700,
-        }}>
-          🎯 Tournoi · Lance la partie dans le jeu ci-dessous
-        </div>
-      )}
-      {blobUrl && (
-        <iframe
-          src={blobUrl}
-          style={{
-            width: "100%", height: 520,
-            border: "none", borderRadius: 14,
-            display: "block",
-          }}
-          allow="autoplay"
-          title="Tank Arena"
-        />
-      )}
-    </div>
-  );
+  
+
+return (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 100,
+      background: "#05070c",
+      width: "100vw",
+      height: "100dvh",
+      overflow: "hidden",
+    }}
+  >
+    {!gameStarted && (
+      <div
+        style={{
+          position: "fixed",
+          top: 10,
+          left: 10,
+          right: 10,
+          textAlign: "center",
+          zIndex: 999,
+          padding: "10px 12px",
+          background: "rgba(5,15,24,0.85)",
+          border: "1px solid rgba(6,182,212,0.35)",
+          borderRadius: 12,
+          fontSize: 12,
+          color: "#06b6d4",
+          fontWeight: 800,
+        }}
+      >
+        🎯 Tournoi Sponsorisé · Tank Arena
+      </div>
+    )}
+
+    {blobUrl && (
+      <iframe
+        src={blobUrl}
+        style={{
+          width: "100vw",
+          height: "100dvh",
+          border: "none",
+          display: "block",
+        }}
+        allow="autoplay"
+        title="Tank Arena"
+      />
+    )}
+  </div>
+);
 }
+
 
 // ─────────────────────────────────────────────
 // CONTENU PRINCIPAL

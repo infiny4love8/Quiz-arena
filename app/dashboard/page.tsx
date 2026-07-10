@@ -180,12 +180,14 @@ export default function DashboardPage() {
   }
 
   const xp = Number(userData.xp ?? 0);
-  const level = getLevelFromXp(xp);
-  const currentLevelXp = getLevelBaseXp(level);
-  const nextLevelXp = getNextLevelXp(level);
+  const levelInfo = getLevelInfo(xp);
+
   const progress = Math.min(
     100,
-    Math.max(0, ((xp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100)
+    Math.max(
+      0,
+      ((xp - levelInfo.current) / (levelInfo.next - levelInfo.current)) * 100
+    )
   );
 
   return (
@@ -335,11 +337,11 @@ export default function DashboardPage() {
           <CollectorCard title="Tickets" value={userData.tickets ?? 0} icon="🎫" badge="RARE" />
           <CollectorCard
             title="Niveau"
-            value={`Débutant ⭐`}
+            value={`${levelInfo.name} ${levelInfo.stars}`}
             icon="⭐"
-            badge={`LV.${level}`}
+            badge={`LV.${levelInfo.level}`}
             progress={progress}
-            sub={`${xp} / ${nextLevelXp} XP`}
+            sub={`${xp} / ${levelInfo.next} XP`}
           />
           <CollectorCard title="Classement" value="Bientôt dispo" icon="🏆" badge="SOON" />
           <CollectorCard title="Cashback" value="5 coins" icon="💵" sub="si défaite Pro" />
@@ -503,26 +505,52 @@ function QuickButton({
   );
 }
 
-function getLevelFromXp(xp: number) {
-  if (xp >= 1000) return 5;
-  if (xp >= 500) return 4;
-  if (xp >= 250) return 3;
-  if (xp >= 100) return 2;
-  return 1;
-}
+function getLevelInfo(xp: number) {
+  if (xp >= 1000) {
+    return {
+      level: 5,
+      name: "Elite",
+      stars: "⭐⭐⭐⭐⭐",
+      current: 1000,
+      next: 1500,
+    };
+  }
 
-function getLevelBaseXp(level: number) {
-  if (level <= 1) return 0;
-  if (level === 2) return 100;
-  if (level === 3) return 250;
-  if (level === 4) return 500;
-  return 1000;
-}
+  if (xp >= 500) {
+    return {
+      level: 4,
+      name: "Expert",
+      stars: "⭐⭐⭐⭐",
+      current: 500,
+      next: 1000,
+    };
+  }
 
-function getNextLevelXp(level: number) {
-  if (level <= 1) return 100;
-  if (level === 2) return 250;
-  if (level === 3) return 500;
-  if (level === 4) return 1000;
-  return 1500;
+  if (xp >= 250) {
+    return {
+      level: 3,
+      name: "Confirmé",
+      stars: "⭐⭐⭐",
+      current: 250,
+      next: 500,
+    };
+  }
+
+  if (xp >= 100) {
+    return {
+      level: 2,
+      name: "Amateur",
+      stars: "⭐⭐",
+      current: 100,
+      next: 250,
+    };
+  }
+
+  return {
+    level: 1,
+    name: "Débutant",
+    stars: "⭐",
+    current: 0,
+    next: 100,
+  };
 }
