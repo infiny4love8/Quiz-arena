@@ -49,6 +49,14 @@ const GAME_LABELS: Record<string, string> = {
   tank_arena:   "Tank Arena",
 };
 
+// ─── Étapes du parcours — juste de la pédagogie, aucune logique ──────────────
+const HOW_IT_WORKS = [
+  { icon: "ti-coin",         text: "Utilise des Gourdes pour rejoindre le tournoi" },
+  { icon: "ti-player-play",  text: "Joue une seule fois — ton score est définitif" },
+  { icon: "ti-hourglass",    text: "Attends la fin du chrono du tournoi" },
+  { icon: "ti-gift",         text: "Reçois ta récompense automatiquement" },
+];
+
 // ─── FIX 4 : Prix corrects ────────────────────────────────────────────────────
 // 5j=220, 6j=260, 7j=305, 8j=350, 9j=395, 10j=440
 function getPrize(n: number): number {
@@ -256,6 +264,53 @@ function LockDisplay({ status }: { status: string }) {
   );
 }
 
+// ─── Bandeau "Comment ça marche" — pédagogie uniquement ──────────────────────
+function HowItWorksStrip() {
+  return (
+    <div style={{
+      background: "rgba(212,175,106,.025)",
+      border: "0.5px solid rgba(212,175,106,.16)",
+      borderRadius: 6, padding: "16px 18px", marginBottom: 16,
+    }}>
+      <p style={{
+        fontSize: 10, textTransform: "uppercase", letterSpacing: ".14em",
+        color: "#D4AF6A", marginBottom: 12, fontWeight: 700,
+      }}>
+        Comment ça marche
+      </p>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))",
+        gap: 10,
+      }}>
+        {HOW_IT_WORKS.map((s, i) => (
+          <div key={i} style={{
+            display: "flex", alignItems: "center", gap: 10,
+            background: "rgba(243,233,210,.02)",
+            border: "0.5px solid rgba(243,233,210,.07)",
+            borderRadius: 5, padding: "10px 12px",
+          }}>
+            <span style={{
+              width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
+              background: "rgba(212,175,106,.1)",
+              border: "0.5px solid rgba(212,175,106,.28)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 11, fontWeight: 700, color: "#D4AF6A",
+              fontFamily: "'Playfair Display', serif",
+            }}>
+              {i + 1}
+            </span>
+            <p style={{ fontSize: 12.5, color: "rgba(243,233,210,.65)", lineHeight: 1.4, margin: 0 }}>
+              <i className={`ti ${s.icon}`} style={{ fontSize: 12, color: "#D4AF6A", marginRight: 5 }} aria-hidden="true" />
+              {s.text}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Carte tournoi ────────────────────────────────────────────────────────────
 function TournamentCard({
   t, user, onJoin, joining, hasPlayed,
@@ -313,7 +368,7 @@ function TournamentCard({
             fontFamily: "'Playfair Display', serif",
           }}>{t.name}</p>
           <p style={{ fontSize: 11, color: "rgba(243,233,210,.42)", marginTop: 2 }}>
-            {GAME_LABELS[t.game_type]} · {t.play_window} min · {t.entry_coins} coins
+            {GAME_LABELS[t.game_type]} · {t.play_window} min
           </p>
         </div>
 
@@ -348,13 +403,33 @@ function TournamentCard({
       {/* Body */}
       <div style={{ padding: "13px 15px", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
 
+        {/* Résumé rapide — clarté immédiate : coût, gain max, tentative unique */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {[
+            { icon: "ti-coin",         text: `${t.entry_coins} GDS` },
+            { icon: "ti-trophy",       text: "1er : 220–440 GDS" },
+            { icon: "ti-target-arrow", text: "1 tentative" },
+          ].map((chip, i) => (
+            <span key={i} style={{
+              display: "inline-flex", alignItems: "center", gap: 4,
+              fontSize: 11, fontWeight: 600, color: "rgba(243,233,210,.6)",
+              background: "rgba(243,233,210,.03)",
+              border: "0.5px solid rgba(243,233,210,.09)",
+              borderRadius: 4, padding: "3px 8px",
+            }}>
+              <i className={`ti ${chip.icon}`} style={{ fontSize: 11, color: "#D4AF6A" }} aria-hidden="true" />
+              {chip.text}
+            </span>
+          ))}
+        </div>
+
         {/* Prizes */}
         {[
           {
             bg: "rgba(212,175,106,.08)", bd: "rgba(212,175,106,.26)",
             ic: "ti-medal", icC: "#D4AF6A", lbl: "1er place",
             // FIX 4 : affichage prix dynamique
-            val: isActive ? `${prizeNow} gds` : "220 – 440 gds", vc: "#D4AF6A",
+            val: isActive ? `${prizeNow} GDS` : "220 – 440 GDS", vc: "#D4AF6A",
           },
           {
             bg: "rgba(243,233,210,.03)", bd: "rgba(243,233,210,.09)",
@@ -363,8 +438,13 @@ function TournamentCard({
           },
           {
             bg: "rgba(243,233,210,.02)", bd: "rgba(243,233,210,.07)",
-            ic: "ti-users", icC: "rgba(243,233,210,.32)", lbl: "Autres",
-            val: "5 coins + XP", vc: "rgba(243,233,210,.4)",
+            ic: "ti-medal-2", icC: "rgba(243,233,210,.45)", lbl: "3e place",
+            val: "10 GDS + 20 XP", vc: "rgba(243,233,210,.58)",
+          },
+          {
+            bg: "rgba(243,233,210,.02)", bd: "rgba(243,233,210,.07)",
+            ic: "ti-refresh", icC: "rgba(243,233,210,.32)", lbl: "Autres joueurs",
+            val: "5 GDS + 15 XP", vc: "rgba(243,233,210,.4)",
           },
         ].map((p, i) => (
           <div key={i} style={{
@@ -391,7 +471,7 @@ function TournamentCard({
               fontSize: 10, textTransform: "uppercase", letterSpacing: ".1em",
               color: "rgba(243,233,210,.3)", marginBottom: 7, fontWeight: 700,
             }}>
-              Prize 1er selon joueurs
+              Gain 1er selon le nombre de joueurs
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 3 }}>
               {[5, 6, 7, 8, 9, 10].map((n) => (
@@ -453,7 +533,7 @@ function TournamentCard({
             color: "#E39485", display: "flex", gap: 6, lineHeight: 1.5,
           }}>
             <i className="ti ti-coin-off" style={{ fontSize: 13, flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
-            Coins insuffisants — tu as {user.coins} coins, il en faut {t.entry_coins}.
+            Gourdes insuffisantes — tu as {user.coins} GDS, il en faut {t.entry_coins} GDS.
           </div>
         )}
 
@@ -464,7 +544,7 @@ function TournamentCard({
             color: "#8FD9AF", display: "flex", alignItems: "center", gap: 6,
           }}>
             <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" />
-            Score enregistré · Attends la fin du tournoi.
+            Score enregistré · Une seule tentative — attends la fin du tournoi.
           </div>
         )}
 
@@ -504,10 +584,10 @@ function TournamentCard({
                   }} />
                   Paiement…
                 </>
-              ) : isFull ? "Complet" : !hasCoins ? "Coins insuffisants" : (
+              ) : isFull ? "Complet" : !hasCoins ? "Gourdes insuffisantes" : (
                 <>
                   <i className="ti ti-player-play" style={{ fontSize: 13 }} aria-hidden="true" />
-                  Miser — {t.entry_coins} coins
+                  Rejoindre — {t.entry_coins} GDS
                 </>
               )}
             </button>
@@ -804,8 +884,8 @@ export default function TournamentsProPage() {
               display: "flex", alignItems: "center", justifyContent: "center",
               fontWeight: 700, fontSize: 16, color: "#1a1204",
               fontFamily: "'Playfair Display', serif",
-            }}>Q</span>
-            <span style={{ fontSize: 16, fontWeight: 700, color: "#D4AF6A", fontFamily: "'Playfair Display', serif", letterSpacing: ".02em" }}>QuizArena</span>
+            }}>Z</span>
+            <span style={{ fontSize: 16, fontWeight: 700, color: "#D4AF6A", fontFamily: "'Playfair Display', serif", letterSpacing: ".02em" }}>Zonarena</span>
           </Link>
 
           <div style={{
@@ -817,7 +897,7 @@ export default function TournamentsProPage() {
             <p style={{ fontSize: 13, fontWeight: 600, color: "#F3E9D2", marginTop: 3 }}>{user?.full_name}</p>
             <div style={{ display: "flex", gap: 10, marginTop: 3 }}>
               <span style={{ fontSize: 11, color: "#D4AF6A" }}>
-                <i className="ti ti-coin" style={{ fontSize: 10 }} aria-hidden="true" /> {user?.coins}
+                <i className="ti ti-coin" style={{ fontSize: 10 }} aria-hidden="true" /> {user?.coins} GDS
               </span>
               <span style={{ fontSize: 11, color: "rgba(243,233,210,.4)" }}>
                 <i className="ti ti-ticket" style={{ fontSize: 10 }} aria-hidden="true" /> {user?.tickets}
@@ -892,8 +972,8 @@ export default function TournamentsProPage() {
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontWeight: 700, fontSize: 15, color: "#1a1204",
                   fontFamily: "'Playfair Display', serif",
-                }}>Q</span>
-                <span style={{ fontSize: 15, fontWeight: 700, color: "#D4AF6A", fontFamily: "'Playfair Display', serif" }}>QuizArena</span>
+                }}>Z</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: "#D4AF6A", fontFamily: "'Playfair Display', serif" }}>Zonarena</span>
               </Link>
               <div style={{
                 background: "rgba(212,175,106,.04)",
@@ -902,7 +982,7 @@ export default function TournamentsProPage() {
               }}>
                 <p style={{ fontSize: 12, color: "#F3E9D2", fontWeight: 600 }}>{user?.full_name}</p>
                 <p style={{ fontSize: 11, color: "#D4AF6A", marginTop: 2 }}>
-                  {user?.coins} coins · {user?.tickets} tickets
+                  {user?.coins} GDS · {user?.tickets} tickets
                 </p>
               </div>
               <nav style={{ display: "flex", flexDirection: "column", gap: 1 }}>
@@ -934,8 +1014,8 @@ export default function TournamentsProPage() {
                   Table Pro · Compétition payante
                 </p>
                 <h1 style={{ fontSize: 22, fontWeight: 600, color: "#F3E9D2", marginBottom: 4, fontFamily: "'Playfair Display', serif" }}>Tournois Pro</h1>
-                <p style={{ fontSize: 13, color: "rgba(243,233,210,.55)", lineHeight: 1.6, maxWidth: 420 }}>
-                  50 coins · Prize 220–440 gds · Cadenas retiré automatiquement à l&apos;heure H
+                <p style={{ fontSize: 13, color: "rgba(243,233,210,.55)", lineHeight: 1.6, maxWidth: 460 }}>
+                  50 GDS pour jouer · Gain de 220 à 440 GDS selon le nombre de joueurs · Une seule tentative par tournoi
                 </p>
               </div>
 
@@ -974,9 +1054,9 @@ export default function TournamentsProPage() {
             {/* Stats header — commission retirée */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 8, marginTop: 14 }}>
               {[
-                { val: "50",      label: "coins entrée", c: "#D4AF6A" },
+                { val: "50",      label: "GDS entrée",  c: "#D4AF6A" },
                 { val: "5–10",    label: "joueurs",      c: "#F3E9D2" },
-                { val: "220–440", label: "gds 1er",      c: "#8FD9AF" },
+                { val: "220–440", label: "GDS 1er",      c: "#8FD9AF" },
               ].map(m => (
                 <div key={m.label} style={{
                   background: "rgba(212,175,106,.04)",
@@ -989,6 +1069,9 @@ export default function TournamentsProPage() {
               ))}
             </div>
           </div>
+
+          {/* Comment ça marche — nouveau bandeau pédagogique */}
+          <HowItWorksStrip />
 
           {/* En cours */}
           {active.length > 0 && (
@@ -1014,7 +1097,7 @@ export default function TournamentsProPage() {
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
                 <i className="ti ti-lock" style={{ fontSize: 11, color: "rgba(212,175,106,.4)" }} aria-hidden="true" />
                 <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "rgba(243,233,210,.4)" }}>
-                  Bientôt — cadenas actif
+                  À venir — ouverture automatique
                 </p>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(275px,1fr))", gap: 12 }}>
