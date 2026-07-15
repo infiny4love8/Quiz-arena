@@ -37,57 +37,59 @@ function WelcomeModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="mb-4 rounded-xl border border-yellow-400/20 bg-yellow-400/10 px-4 py-3">
-          <p className="text-sm leading-relaxed text-white">
-            🎉 Nous t&apos;offrons{" "}
-            <span className="font-semibold text-yellow-400">
-              3 tickets sponsorisés gratuits
-            </span>{" "}
-            pour tenter de gagner de l&apos;argent dans les tournois du
-            lancement.
-          </p>
-        </div>
+  <p className="text-sm leading-relaxed text-white">
+    🎉 Bienvenue !
+    <br />
+    Nous t&apos;offrons{" "}
+    <span className="font-semibold text-yellow-400">
+      5 tickets sponsorisés
+    </span>{" "}
+    pour participer à tes premiers tournois sponsorisés et tenter de gagner
+    de l&apos;argent.
+  </p>
+</div>
 
-        <div className="mb-5 flex flex-col gap-3">
-          {[
-            [
-              "🎫",
-              "Les tickets sponsorisés permettent de rejoindre les tournois gratuits et de gagner des Gourdes.",
-            ],
-            [
-              "🪙",
-              "Les Gourdes servent à rejoindre les tournois Pro et peuvent être retirées. 1 Gourde = 1 GDS.",
-            ],
-            [
-              "⭐",
-              "Chaque tournoi Pro terminé te rapporte de l’XP et fait progresser ton niveau.",
-            ],
-            [
-              "💳",
-              "Tu peux acheter des Gourdes ou des tickets sponsorisés depuis la page Acheter.",
-            ],
-          ].map(([icon, text]) => (
-            <div key={text} className="flex items-start gap-3">
-              <span className="text-lg">{icon}</span>
+<div className="mb-5 flex flex-col gap-3">
+  {[
+    [
+      "🎫",
+      "Les tickets sponsorisés permettent de participer  aux tournois sponsorisés et de tenter de gagner de l'argent.",
+    ],
+    [
+      "💰",
+      "Les Gourdes servent à rejoindre les tournois Pro. Les récompenses gagnées peuvent être retirées via MonCash.",
+    ],
+    [
+      "⭐",
+      "Chaque tournoi Pro terminé te fait gagner de l’XP et augmente ton niveau.",
+    ],
+    [
+      "💳",
+      "Besoin de plus de Gourdes ou de tickets sponsorisés ? Tu peux en obtenir à tout moment depuis la page Acheter.",
+    ],
+  ].map(([icon, text]) => (
+    <div key={text} className="flex items-start gap-3">
+      <span className="text-lg">{icon}</span>
 
-              <p className="text-sm leading-relaxed text-zinc-400">{text}</p>
-            </div>
-          ))}
-        </div>
+      <p className="text-sm leading-relaxed text-zinc-400">{text}</p>
+    </div>
+  ))}
+</div>
 
-        <div className="mb-4 border-t border-white/10 pt-4 text-center">
-          <p className="text-xs leading-relaxed text-zinc-600">
-            Joue, progresse et tente de gagner.
-            <br />
-            Tes récompenses sont créditées automatiquement. 🚀
-          </p>
-        </div>
+<div className="mb-4 border-t border-white/10 pt-4 text-center">
+  <p className="text-xs leading-relaxed text-zinc-600">
+    🏆 Plus tu joues, plus tu progresses.
+    <br />
+    💰 Plus tu progresses, plus tu peux gagner.
+  </p>
+</div>
 
-        <button
-          onClick={onClose}
-          className="w-full rounded-xl bg-yellow-400 py-3 text-sm font-bold text-black transition hover:bg-yellow-300"
-        >
-          Découvrir mon Dashboard 🎮
-        </button>
+<button
+  onClick={onClose}
+  className="w-full rounded-xl bg-yellow-400 py-3 text-sm font-bold text-black transition hover:bg-yellow-300"
+>
+  Découvrir mon Dashboard 🎮
+</button>
       </div>
     </div>
   );

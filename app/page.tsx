@@ -38,23 +38,35 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white font-sans overflow-hidden">
-      <div className="overflow-hidden border-b border-yellow-400/20 bg-yellow-400 text-black">
+      <div className="overflow-hidden border-b border-yellow-400/20 bg-[#08130D]">
         <div
-          className="whitespace-nowrap py-2 text-sm font-black"
-          style={{
-            display: "inline-block",
-            minWidth: "100%",
-            animation: "zonarenaMarquee 22s linear infinite",
-          }}
+          className="flex w-max"
+          style={{ animation: "zonarenaMarquee 24s linear infinite" }}
         >
-          🎁 Tournois sponsorisés GRATUITS • 8h · 12h · 18h • ⚔️ Duel 1v1 • 💰 Retraits MonCash rapides • 🏆 Joue, progresse, gagne !
+          {[0, 1].map((copy) => (
+            <div
+              key={copy}
+              className="flex shrink-0 items-center gap-6 whitespace-nowrap px-6 py-2.5 text-sm"
+              aria-hidden={copy === 1}
+            >
+              <span className="rounded-full border border-green-400/30 bg-green-400/10 px-3 py-1 text-xs font-black text-green-400">
+                GRATUIT
+              </span>
+              <span className="font-bold text-white">Tournois sponsorisés</span>
+              <span className="font-black text-yellow-400">8h • 12h • 18h</span>
+              <span className="text-zinc-300">Gagne jusqu&apos;à 250 GDS</span>
+              <span className="text-zinc-500">Retraits MonCash</span>
+              <span className="text-zinc-300">Duel 1v1</span>
+              <span className="text-yellow-400">Joue • Progresse • Gagne</span>
+            </div>
+          ))}
         </div>
 
         <style>
           {`
             @keyframes zonarenaMarquee {
-              0% { transform: translateX(100%); }
-              100% { transform: translateX(-100%); }
+              from { transform: translateX(0); }
+              to { transform: translateX(-50%); }
             }
           `}
         </style>
@@ -94,7 +106,7 @@ export default function HomePage() {
 
         <div className="relative">
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-green-400/30 bg-green-400/10 px-4 py-2 text-sm font-black text-green-400">
-            🟢 Tournois sponsorisés gratuits
+            🟢 Tournois sponsorisés · gains en Gourdes
           </div>
 
           <h1 className="text-5xl font-black leading-[1.08] tracking-tight md:text-6xl">
@@ -104,17 +116,18 @@ export default function HomePage() {
 
           <div className="mt-5 space-y-2 text-[18px] font-bold text-zinc-300">
             <p>🎁 Tournois sponsorisés GRATUITS</p>
-            <p>💰 Gagne de vraies Gourdes</p>
+             <p>🎁 Tournois Pro disponible</p>
+            <p>💰 Gagne de L'argent</p>
             <p>⚔️ Défie tes amis en Duel</p>
           </div>
 
           <p className="mt-5 max-w-sm text-[16px] font-medium leading-relaxed text-zinc-400">
-            Participe à des tournois, progresse dans les jeux et retire tes gains via MonCash.
+            Participe à des tournois, progresse dans les jeux, gagne des Gourdes et retire tes gains via MonCash.
           </p>
 
           <div className="mt-7 flex gap-3">
             <a href="/register" className="rounded-xl bg-yellow-400 px-6 py-3.5 text-sm font-black text-black transition hover:scale-[1.03] hover:bg-yellow-300">
-              🏆 Rejoindre l'arène
+              Créer mon compte
             </a>
             <a href="/login" className="rounded-xl border border-zinc-700 px-6 py-3.5 text-sm font-semibold text-zinc-400 transition hover:border-yellow-400/40 hover:text-yellow-400">
               Connexion
@@ -138,9 +151,14 @@ export default function HomePage() {
                   <p className="text-xs text-zinc-600">Prochain tournoi</p>
                   <h3 className="text-lg font-black">⚑ Drapeaux Battle</h3>
                 </div>
-                <span className="rounded-full border border-green-400/30 bg-green-400/10 px-3 py-1 text-xs font-black text-green-400">
-                  GRATUIT
-                </span>
+                <div className="text-right">
+                  <span className="rounded-full border border-green-400/30 bg-green-400/10 px-3 py-1 text-xs font-black text-green-400">
+                    GRATUIT
+                  </span>
+                  <p className="mt-2 text-[11px] font-semibold text-zinc-500">
+                    1 ticket sponsorisé requis
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -192,9 +210,9 @@ export default function HomePage() {
 
         <div className="grid gap-3 md:grid-cols-4">
           {[
-            { tag: "GRATUIT", name: "Tournois sponsorisés", desc: "Utilise tes tickets gratuits et tente de gagner jusqu'à 250 GDS.", color: "green" },
+            { tag: "GRATUIT", name: "Tournois sponsorisés", desc: "Utilise 1 ticket sponsorisé et tente de gagner jusqu'à 250 GDS.", color: "green" },
             { tag: "PRO", name: "Tournois Pro", desc: "50 GDS d'entrée. Le meilleur score remporte le gros lot.", color: "yellow" },
-            { tag: "1V1", name: "Duel entre amis", desc: "Défie un ami pour le fun ou avec mise en coins.", color: "blue" },
+            { tag: "1V1", name: "Duel entre amis", desc: "Défie un ami pour le fun ou avec une mise en Gourdes.", color: "blue" },
             { tag: "TRAINING", name: "Entraînement", desc: "Améliore ton score avant les tournois.", color: "yellow" },
           ].map((m) => (
             <div key={m.name} className="rounded-2xl border border-yellow-400/25 bg-[#131309] p-5 transition hover:-translate-y-1 hover:border-yellow-400/50">
@@ -222,7 +240,7 @@ export default function HomePage() {
             <p className="mb-2 text-xs font-bold uppercase tracking-widest text-yellow-400">duel 1v1</p>
             <h2 className="text-2xl font-black tracking-tight">Défie un ami en duel</h2>
             <p className="mt-3 max-w-xl text-[17px] font-medium leading-relaxed text-zinc-400">
-              Crée un duel, choisis le jeu, invite ton ami et voyez qui fait le meilleur score. Jouez pour le fun ou avec une mise en coins.
+              Crée un duel, choisis le jeu, invite ton ami et voyez qui fait le meilleur score. Jouez pour le fun ou avec une mise en Gourdes.
             </p>
           </div>
           <a href="/register" className="mt-6 inline-block rounded-xl bg-yellow-400 px-6 py-3.5 text-sm font-black text-black transition hover:scale-[1.03] hover:bg-yellow-300 md:mt-0">

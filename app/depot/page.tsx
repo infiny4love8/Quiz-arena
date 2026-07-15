@@ -66,7 +66,7 @@ export default function DepotPage() {
         .upload(path, screenshot);
       if (uploadError) throw new Error("Erreur upload screenshot.");
 
-      const { error: insertError } = await supabase
+      const { data: depositData, error: insertError } = await supabase
         .from("deposits")
         .insert({
           user_id: user.id,
@@ -74,8 +74,41 @@ export default function DepotPage() {
           screenshot_url: path,
           status: "pending",
           type: tab,
-        });
-      if (insertError) throw new Error("Erreur enregistrement dépôt.");
+        })
+        .select("id")
+        .single();
+
+      if (insertError || !depositData) {
+        throw new Error("Erreur enregistrement dépôt.");
+      }
+
+      // Alerte email administrateur.
+      // La demande reste enregistrée même si l'email ne peut pas être envoyé.
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session?.access_token) {
+          const alertResponse = await fetch("/api/admin-alert", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              alertType: "deposit",
+              requestId: depositData.id,
+            }),
+          });
+
+          if (!alertResponse.ok) {
+            console.error("La notification email administrateur n'a pas pu être envoyée.");
+          }
+        }
+      } catch (alertError) {
+        console.error("Erreur notification administrateur :", alertError);
+      }
 
       setDoneMessage(
         isCoins

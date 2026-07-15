@@ -380,7 +380,6 @@ export default function ProPlayPage() {
             {emoji}
           </div>
 
-          <p className="text-xs font-black uppercase tracking-widest text-orange-400">Niveau de puissance</p>
           <p
             className="text-4xl font-black text-yellow-400"
             style={{ textShadow: "0 0 18px rgba(250,204,21,0.6)" }}
