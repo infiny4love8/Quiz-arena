@@ -17,6 +17,9 @@ const TICKETS_OPTIONS = [
   { tickets: 5, gds: 250 },
 ];
 
+const MIN_CUSTOM = 50;
+const MAX_CUSTOM = 5000;
+
 type Tab = "coins" | "tickets";
 
 export default function DepotPage() {
@@ -25,6 +28,7 @@ export default function DepotPage() {
   const [selectedCoins, setSelectedCoins] = useState<typeof COINS_OPTIONS[0] | null>(null);
   const [screenshotCoins, setScreenshotCoins] = useState<File | null>(null);
   const [previewCoins, setPreviewCoins] = useState<string | null>(null);
+  const [customCoins, setCustomCoins] = useState("");
 
   const [selectedTickets, setSelectedTickets] = useState<typeof TICKETS_OPTIONS[0] | null>(null);
   const [screenshotTickets, setScreenshotTickets] = useState<File | null>(null);
@@ -34,6 +38,7 @@ export default function DepotPage() {
   const [done, setDone] = useState(false);
   const [doneMessage, setDoneMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>, type: Tab) => {
     const file = e.target.files?.[0];
@@ -44,14 +49,50 @@ export default function DepotPage() {
     setError(null);
   };
 
+  const pickPack = (type: Tab, opt: typeof COINS_OPTIONS[0] | typeof TICKETS_OPTIONS[0]) => {
+    if (type === "coins") { setSelectedCoins(opt as typeof COINS_OPTIONS[0]); setCustomCoins(""); }
+    else { setSelectedTickets(opt as typeof TICKETS_OPTIONS[0]); }
+    setError(null);
+  };
+
+  const handleCustomChange = (value: string) => {
+    setCustomCoins(value);
+    setSelectedCoins(null);
+    setError(null);
+  };
+
+  const copyNumber = async () => {
+    try {
+      await navigator.clipboard.writeText("50938998073");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // silencieux — pas grave si le clipboard n'est pas dispo
+    }
+  };
+
+  const isCoins = tab === "coins";
+  const packAmount = isCoins ? selectedCoins?.gds : selectedTickets?.gds;
+  const customValue = isCoins ? customCoins : "";
+  const displayAmount = packAmount ?? (customValue ? Number(customValue) : null);
+
   const handleSubmit = async () => {
     setError(null);
-    const isCoins = tab === "coins";
     const screenshot = isCoins ? screenshotCoins : screenshotTickets;
-    const amount = isCoins ? selectedCoins?.gds : selectedTickets?.gds;
 
-    if (!amount) return setError(isCoins ? "Choisis un pack de coins." : "Choisis un pack de tickets.");
-    if (!screenshot) return setError("Ajoute le screenshot MonCash.");
+    let amount: number | undefined = packAmount;
+
+    if (!amount && customValue) {
+      const parsed = Number(customValue);
+      if (!parsed || parsed < MIN_CUSTOM || parsed > MAX_CUSTOM) {
+        setError(`Le montant doit être entre ${MIN_CUSTOM} et ${MAX_CUSTOM} GDS.`);
+        return;
+      }
+      amount = parsed;
+    }
+
+    if (!amount) return setError("Choisis un pack ou entre un montant.");
+    if (!screenshot) return setError("Ajoute la photo du paiement MonCash.");
 
     setLoading(true);
     try {
@@ -111,9 +152,11 @@ export default function DepotPage() {
       }
 
       setDoneMessage(
-        isCoins
-          ? `🪙 ${selectedCoins!.coins} coins en attente de validation.`
-          : `🎫 ${selectedTickets!.tickets} ticket(s) en attente de validation.`
+        packAmount
+          ? isCoins
+            ? `🪙 ${selectedCoins!.coins} coins en attente de validation.`
+            : `🎫 ${selectedTickets!.tickets} ticket(s) en attente de validation.`
+          : `${amount} GDS en attente de validation.`
       );
       setDone(true);
     } catch (err: any) {
@@ -123,351 +166,205 @@ export default function DepotPage() {
     }
   };
 
-  if (done) {
-    return (
-      <div style={s.container}>
-        <div style={s.card}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
-          <h2 style={s.title}>Dépôt envoyé !</h2>
-          <p style={s.subtitle}>
-            {doneMessage}
-            <br />Ton compte sera mis à jour dans 2-3 minutes après confirmation.
-          </p>
-          <button
-            style={s.btnGreen}
-            onClick={() => {
-              setDone(false);
-              setSelectedCoins(null);
-              setSelectedTickets(null);
-              setScreenshotCoins(null);
-              setScreenshotTickets(null);
-              setPreviewCoins(null);
-              setPreviewTickets(null);
-            }}
-          >
-            Nouveau dépôt
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const resetAll = () => {
+    setDone(false);
+    setSelectedCoins(null);
+    setSelectedTickets(null);
+    setScreenshotCoins(null);
+    setScreenshotTickets(null);
+    setPreviewCoins(null);
+    setPreviewTickets(null);
+    setCustomCoins("");
+    setCustomTickets("");
+  };
 
-  const isCoins = tab === "coins";
+  const screenshot = isCoins ? screenshotCoins : screenshotTickets;
+  const preview = isCoins ? previewCoins : previewTickets;
+  const canSubmit = (!!packAmount || !!customValue) && !!screenshot;
 
   return (
-    <div style={s.container}>
-      <div style={s.card}>
-        <h1 style={s.title}>Ajouter des fonds</h1>
-        <p style={s.subtitle}>Choisis ce que tu veux ajouter à ton compte</p>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Cormorant+Garamond:wght@500;600;700&display=swap');
+        .font-serif-display { font-family: 'Playfair Display', serif; }
+        .font-serif-body { font-family: 'Cormorant Garamond', serif; }
+        .gold-text {
+          background: linear-gradient(120deg, #b8860b, #ffe27a, #d4af37);
+          -webkit-background-clip: text; background-clip: text; color: transparent;
+        }
+        .gold-btn {
+          background: linear-gradient(120deg, #b8860b, #ffd700, #b8860b);
+          background-size: 200% auto; transition: background-position .4s;
+        }
+        .gold-btn:hover { background-position: right center; }
+      `}</style>
 
-        {/* TABS */}
-        <div style={s.tabs}>
-          <button
-            onClick={() => setTab("coins")}
-            style={{
-              ...s.tab,
-              background: isCoins ? "#0d1f18" : "transparent",
-              color: isCoins ? "#10b981" : "#4a5568",
-              outline: isCoins ? "1px solid #10b981" : "1px solid transparent",
-            }}
-          >
-            🪙 Coins
-          </button>
-          <button
-            onClick={() => setTab("tickets")}
-            style={{
-              ...s.tab,
-              background: !isCoins ? "#1a1028" : "transparent",
-              color: !isCoins ? "#a78bfa" : "#4a5568",
-              outline: !isCoins ? "1px solid #7c3aed" : "1px solid transparent",
-            }}
-          >
-            🎫 Tickets
-          </button>
-        </div>
-
-        {/* === COINS === */}
-        {isCoins && (
-          <>
-            <div style={s.infoExplain}>
-              Les <span style={{ color: "#10b981", fontWeight: 600 }}>🪙 coins</span> te permettent de rejoindre les tournois Pro.{" "}
-              <span style={{ color: "#10b981", fontWeight: 600 }}>1 coin = 1 GDS.</span>
-            </div>
-
-            <div style={s.section}>
-              <label style={s.label}>1. Choisis ton pack de coins</label>
-              <div style={s.grid}>
-                {COINS_OPTIONS.map((opt) => {
-                  const active = selectedCoins?.coins === opt.coins;
-                  return (
-                    <button
-                      key={opt.coins}
-                      onClick={() => setSelectedCoins(opt)}
-                      style={{
-                        ...s.optBtn,
-                        background: active ? "#0d1f18" : "#0d0f14",
-                        outline: active ? "1px solid #10b981" : "1px solid #1e2130",
-                        color: active ? "#10b981" : "#8892a4",
-                      }}
-                    >
-                      <span style={{ fontSize: 16, display: "block" }}>🪙 {opt.coins}</span>
-                      <span style={{ fontSize: 11, color: active ? "#6ee7b7" : "#4a5568", marginTop: 2, display: "block" }}>
-                        {opt.gds} GDS
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {selectedCoins && (
-              <div style={s.infoBox}>
-                <p style={{ margin: "0 0 6px", fontWeight: 600, color: "#f0ede6", fontSize: 14 }}>
-                  2. Envoie <span style={{ color: "#f59e0b" }}>{selectedCoins.gds} GDS</span> sur MonCash
-                </p>
-                <p style={{ margin: 0, fontSize: 14, color: "#8892a4" }}>
-                  Numéro : <strong style={{ color: "#f59e0b", letterSpacing: "0.05em" }}>+509 38998073</strong>
-                </p>
-                <p style={{ margin: "6px 0 0", fontSize: 12, color: "#4a5568" }}>
-                  Garde ton screenshot après le paiement.
-                </p>
-              </div>
-            )}
-
-            <div style={s.section}>
-              <label style={s.label}>3. Upload le screenshot MonCash</label>
-              <label style={s.uploadZone}>
-                <input type="file" accept="image/*" onChange={(e) => handleFile(e, "coins")} style={{ display: "none" }} />
-                {previewCoins ? (
-                  <img src={previewCoins} alt="preview" style={{ width: "100%", borderRadius: 8, objectFit: "cover", maxHeight: 200 }} />
-                ) : (
-                  <div style={{ textAlign: "center", color: "#4a5568" }}>
-                    <div style={{ fontSize: 28, marginBottom: 6 }}>📷</div>
-                    <div style={{ fontSize: 13 }}>Clique pour ajouter le screenshot</div>
-                    <div style={{ fontSize: 11, marginTop: 4 }}>JPG, PNG acceptés</div>
-                  </div>
-                )}
-              </label>
-              {previewCoins && (
-                <button onClick={() => { setScreenshotCoins(null); setPreviewCoins(null); }} style={s.btnGhost}>
-                  Changer l'image
-                </button>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* === TICKETS === */}
-        {!isCoins && (
-          <>
-            <div style={{ ...s.infoExplain, outline: "1px solid #2a1f40" }}>
-              Les <span style={{ color: "#a78bfa", fontWeight: 600 }}>🎫 tickets</span> te permettent de rejoindre les tournois sponsorisés et de gagner des récompenses exclusives.
-            </div>
-
-            <div style={s.section}>
-              <label style={s.label}>1. Choisis ton pack de tickets</label>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-                {TICKETS_OPTIONS.map((opt) => {
-                  const active = selectedTickets?.tickets === opt.tickets;
-                  return (
-                    <button
-                      key={opt.tickets}
-                      onClick={() => setSelectedTickets(opt)}
-                      style={{
-                        ...s.optBtn,
-                        background: active ? "#1a1028" : "#0d0f14",
-                        outline: active ? "1px solid #7c3aed" : "1px solid #1e2130",
-                        color: active ? "#a78bfa" : "#8892a4",
-                      }}
-                    >
-                      <span style={{ fontSize: 16, display: "block" }}>🎫 {opt.tickets}</span>
-                      <span style={{ fontSize: 11, color: active ? "#c4b5fd" : "#4a5568", marginTop: 2, display: "block" }}>
-                        {opt.gds} GDS
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {selectedTickets && (
-              <div style={{ ...s.infoBox, background: "#0e0a1e", outline: "1px solid #2a1f40" }}>
-                <p style={{ margin: "0 0 6px", fontWeight: 600, color: "#f0ede6", fontSize: 14 }}>
-                  2. Envoie <span style={{ color: "#a78bfa" }}>{selectedTickets.gds} GDS</span> sur MonCash
-                </p>
-                <p style={{ margin: 0, fontSize: 14, color: "#8892a4" }}>
-                  Numéro : <strong style={{ color: "#a78bfa", letterSpacing: "0.05em" }}>+509 38998073</strong>
-                </p>
-                <p style={{ margin: "6px 0 0", fontSize: 12, color: "#4a5568" }}>
-                  Garde ton screenshot après le paiement.
-                </p>
-              </div>
-            )}
-
-            <div style={s.section}>
-              <label style={s.label}>3. Upload le screenshot MonCash</label>
-              <label style={{ ...s.uploadZone, outline: "2px dashed #2a1f40" }}>
-                <input type="file" accept="image/*" onChange={(e) => handleFile(e, "tickets")} style={{ display: "none" }} />
-                {previewTickets ? (
-                  <img src={previewTickets} alt="preview" style={{ width: "100%", borderRadius: 8, objectFit: "cover", maxHeight: 200 }} />
-                ) : (
-                  <div style={{ textAlign: "center", color: "#4a5568" }}>
-                    <div style={{ fontSize: 28, marginBottom: 6 }}>📷</div>
-                    <div style={{ fontSize: 13 }}>Clique pour ajouter le screenshot</div>
-                    <div style={{ fontSize: 11, marginTop: 4 }}>JPG, PNG acceptés</div>
-                  </div>
-                )}
-              </label>
-              {previewTickets && (
-                <button onClick={() => { setScreenshotTickets(null); setPreviewTickets(null); }} style={s.btnGhost}>
-                  Changer l'image
-                </button>
-              )}
-            </div>
-          </>
-        )}
-
-        {error && <div style={s.errorBox}>{error}</div>}
-
-        <button
-          onClick={handleSubmit}
-          disabled={loading || (isCoins ? !selectedCoins || !screenshotCoins : !selectedTickets || !screenshotTickets)}
-          style={{
-            ...(isCoins ? s.btnGreen : s.btnPurple),
-            opacity: loading || (isCoins ? !selectedCoins || !screenshotCoins : !selectedTickets || !screenshotTickets) ? 0.45 : 1,
-            cursor: loading ? "not-allowed" : "pointer",
-          }}
+      <div className="min-h-screen flex items-center justify-center px-4 py-10 text-white" style={{ background: "#08070a" }}>
+        <div
+          className="w-full max-w-[480px] rounded-sm border border-amber-400/30 p-7 sm:p-9 relative"
+          style={{ background: "radial-gradient(ellipse at top, #17130a 0%, #08070a 70%)" }}
         >
-          {loading ? "Envoi en cours…" : isCoins ? "Ajouter les coins 🪙" : "Ajouter les tickets 🎫"}
-        </button>
+          <span className="absolute -top-1 -left-1 h-2 w-2 rotate-45 bg-amber-300 shadow-[0_0_8px_#ffd700]" />
+          <span className="absolute -top-1 -right-1 h-2 w-2 rotate-45 bg-amber-300 shadow-[0_0_8px_#ffd700]" />
+          <span className="absolute -bottom-1 -left-1 h-2 w-2 rotate-45 bg-amber-300 shadow-[0_0_8px_#ffd700]" />
+          <span className="absolute -bottom-1 -right-1 h-2 w-2 rotate-45 bg-amber-300 shadow-[0_0_8px_#ffd700]" />
+
+          {done ? (
+            <div className="text-center">
+              <div className="mx-auto mb-6 flex h-[76px] w-[76px] items-center justify-center rounded-full border border-amber-400/30 bg-amber-400/8">
+                <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffd700" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+              </div>
+              <h2 className="mb-2 text-3xl font-serif-display italic font-semibold gold-text">Dépôt envoyé !</h2>
+              <p className="mb-7 text-lg leading-relaxed text-[#c9c2b2]">
+                {doneMessage}
+                <br />
+                Ton compte sera mis à jour dans 2-3 minutes après confirmation.
+              </p>
+              <button
+                onClick={resetAll}
+                className="gold-btn w-full rounded-sm py-3.5 text-lg font-serif-body font-semibold text-[#1a1400]"
+              >
+                Nouveau dépôt
+              </button>
+            </div>
+          ) : (
+            <>
+              <h1 className="text-center text-3xl sm:text-4xl font-serif-display italic font-semibold gold-text mb-1">
+                Ajouter des fonds
+              </h1>
+              <p className="text-center text-lg font-serif-body text-[#a89f8c] mb-7">
+                Choisis ce que tu veux ajouter à ton compte
+              </p>
+
+              {/* TOGGLE */}
+              <div className="flex border-b border-amber-400/20 mb-6">
+                <button
+                  onClick={() => setTab("coins")}
+                  className={`flex-1 py-2.5 font-serif-body text-lg font-semibold border-b-2 -mb-px transition ${
+                    isCoins ? "text-amber-300 border-amber-300" : "text-[#6b6455] border-transparent"
+                  }`}
+                >
+                  Coins
+                </button>
+                <button
+                  onClick={() => setTab("tickets")}
+                  className={`flex-1 py-2.5 font-serif-body text-lg font-semibold border-b-2 -mb-px transition ${
+                    !isCoins ? "text-amber-300 border-amber-300" : "text-[#6b6455] border-transparent"
+                  }`}
+                >
+                  Tickets
+                </button>
+              </div>
+
+              {/* PACKS */}
+              <div className="mb-4">
+                <label className="block font-serif-body text-base font-semibold text-amber-300/90 mb-2.5">
+                  1. Ton pack
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(isCoins ? COINS_OPTIONS : TICKETS_OPTIONS).map((opt) => {
+                    const active = isCoins
+                      ? selectedCoins?.gds === opt.gds
+                      : selectedTickets?.gds === opt.gds;
+                    const n = isCoins ? (opt as typeof COINS_OPTIONS[0]).coins : (opt as typeof TICKETS_OPTIONS[0]).tickets;
+                    return (
+                      <button
+                        key={opt.gds}
+                        onClick={() => pickPack(tab, opt)}
+                        className={`rounded border py-3 px-1 text-center transition ${
+                          active
+                            ? "border-amber-300 bg-amber-300/10 text-amber-300"
+                            : "border-amber-400/25 text-[#c9c2b2]"
+                        }`}
+                      >
+                        <span className="block text-base font-bold">{n}</span>
+                        <span className="block text-[11px] opacity-70 mt-0.5">{opt.gds} GDS</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* MONTANT LIBRE — coins uniquement, les tickets restent en packs fixes */}
+              {isCoins && (
+                <div className="mb-6">
+                  <label className="block font-serif-body text-base font-semibold text-amber-300/90 mb-2">
+                    Ou entre le montant que tu veux
+                  </label>
+                  <input
+                    type="number"
+                    min={MIN_CUSTOM}
+                    max={MAX_CUSTOM}
+                    placeholder={`Entre ${MIN_CUSTOM} et ${MAX_CUSTOM} GDS`}
+                    value={customValue}
+                    onChange={(e) => handleCustomChange(e.target.value)}
+                    className="w-full bg-transparent border-0 border-b border-amber-400/25 px-1 py-2.5 text-base text-[#f5f0e6] placeholder:text-[#6b6455] outline-none focus:border-amber-300 transition"
+                  />
+                </div>
+              )}
+
+              {/* PAIEMENT + PREUVE */}
+              <div className="border border-amber-400/30 rounded-sm p-4 mb-6">
+                <p className="font-serif-display italic text-xl text-amber-300 mb-3">
+                  2. {displayAmount ? `Envoie ${displayAmount} GDS sur MonCash` : "Choisis un montant"}
+                </p>
+
+                <div className="flex items-center gap-2.5 bg-[#0f0d08] border border-dashed border-amber-400/35 rounded px-3 py-2.5 mb-3">
+                  <span className="flex-1 text-[15px] tracking-wide text-[#f5f0e6]">+509 38998073</span>
+                  <button
+                    onClick={copyNumber}
+                    className={`text-xs font-bold border rounded px-2.5 py-1.5 transition ${
+                      copied ? "border-green-400/50 text-green-400" : "border-amber-400/40 text-amber-300"
+                    }`}
+                  >
+                    {copied ? "Copié ✓" : "Copier"}
+                  </button>
+                </div>
+
+                <p className="text-lg font-semibold text-[#f5f0e6] leading-snug mb-4">
+                  Paiement validé en 2 ou 3 minutes.<br />
+                  Envoie une photo du paiement MonCash pour la sécurité.
+                </p>
+
+                <label className="block border-[1.5px] border-dashed border-amber-400/35 rounded p-4 cursor-pointer text-center">
+                  <input type="file" accept="image/*" onChange={(e) => handleFile(e, tab)} className="hidden" />
+                  {preview ? (
+                    <div className="relative">
+                      <img src={preview} alt="preview" className="w-full rounded max-h-[160px] object-cover" />
+                      <span className="absolute top-2 right-2 bg-[#08070acc] border border-amber-400/40 text-amber-300 text-xs px-2.5 py-1 rounded">
+                        Changer
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="text-amber-300 font-serif-body text-base font-semibold">
+                        Ajouter la photo du paiement
+                      </div>
+                      <div className="text-[#6b6455] text-xs mt-1">JPG ou PNG</div>
+                    </>
+                  )}
+                </label>
+              </div>
+
+              {error && (
+                <div className="mb-4 rounded border border-red-400/30 bg-red-400/5 px-4 py-3 text-sm text-red-400">
+                  {error}
+                </div>
+              )}
+
+              <button
+                onClick={handleSubmit}
+                disabled={loading || !canSubmit}
+                className="gold-btn w-full rounded-sm py-3.5 text-lg font-serif-body font-semibold text-[#1a1400] disabled:opacity-45 transition"
+              >
+                {loading ? "Envoi en cours…" : isCoins ? "Ajouter les coins" : "Ajouter les tickets"}
+              </button>
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
-
-const s: Record<string, React.CSSProperties> = {
-  container: {
-    minHeight: "100vh",
-    background: "#0d0f14",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "24px 16px",
-    fontFamily: "'DM Sans', sans-serif",
-  },
-  card: {
-    background: "#111420",
-    outline: "1px solid #1e2130",
-    borderRadius: 16,
-    padding: "32px 28px",
-    width: "100%",
-    maxWidth: 480,
-  },
-  title: { margin: "0 0 6px", fontSize: 22, fontWeight: 700, color: "#f0ede6" },
-  subtitle: { margin: "0 0 24px", fontSize: 14, color: "#4a5568", lineHeight: 1.6 },
-  tabs: {
-    display: "flex",
-    gap: 8,
-    background: "#0d0f14",
-    borderRadius: 10,
-    padding: 4,
-    marginBottom: 24,
-  },
-  tab: {
-    flex: 1,
-    padding: "10px",
-    borderRadius: 8,
-    border: "none",
-    cursor: "pointer",
-    fontSize: 14,
-    fontWeight: 600,
-    transition: "all 0.15s",
-  },
-  infoExplain: {
-    background: "#0a0c10",
-    outline: "1px solid #1e2130",
-    borderRadius: 10,
-    padding: "12px 14px",
-    marginBottom: 20,
-    fontSize: 13,
-    color: "#8892a4",
-    lineHeight: 1.55,
-  },
-  section: { marginBottom: 22 },
-  label: {
-    display: "block",
-    fontSize: 12,
-    color: "#8892a4",
-    marginBottom: 10,
-    fontWeight: 500,
-    textTransform: "uppercase" as const,
-    letterSpacing: "0.05em",
-  },
-  grid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 },
-  optBtn: {
-    borderRadius: 10,
-    border: "none",
-    padding: "12px 8px",
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: "pointer",
-    transition: "all 0.15s",
-    textAlign: "center" as const,
-  },
-  infoBox: {
-    background: "#0a1628",
-    outline: "1px solid #1e3a5f",
-    borderRadius: 10,
-    padding: "14px 16px",
-    marginBottom: 22,
-  },
-  uploadZone: {
-    display: "block",
-    background: "#0d0f14",
-    outline: "2px dashed #1e2130",
-    borderRadius: 10,
-    padding: 20,
-    cursor: "pointer",
-  },
-  btnGreen: {
-    width: "100%",
-    background: "#10b981",
-    border: "none",
-    borderRadius: 10,
-    color: "#fff",
-    padding: "14px",
-    fontSize: 15,
-    fontWeight: 700,
-    marginTop: 8,
-  },
-  btnPurple: {
-    width: "100%",
-    background: "#7c3aed",
-    border: "none",
-    borderRadius: 10,
-    color: "#fff",
-    padding: "14px",
-    fontSize: 15,
-    fontWeight: 700,
-    marginTop: 8,
-  },
-  btnGhost: {
-    background: "transparent",
-    border: "none",
-    color: "#4a5568",
-    fontSize: 12,
-    cursor: "pointer",
-    marginTop: 8,
-    padding: 0,
-    textDecoration: "underline",
-  },
-  errorBox: {
-    background: "#2d0f0f",
-    outline: "1px solid #ef444440",
-    borderRadius: 8,
-    padding: "10px 14px",
-    color: "#ef4444",
-    fontSize: 13,
-    marginBottom: 12,
-  },
-};
