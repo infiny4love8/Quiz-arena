@@ -1,28 +1,45 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "ZonArena — Tournois sponsorisés, gains en Gourdes",
+  description:
+    "Participe à des tournois sponsorisés gratuits ou Pro, défie tes amis en duel 1v1 et gagne des Gourdes. Retraits rapides via MonCash.",
+  openGraph: {
+    title: "ZonArena — Entre dans l'Arène",
+    description:
+      "Tournois sponsorisés, duels 1v1 et gains en Gourdes. Retraits via MonCash.",
+    type: "website",
+  },
+};
+
 type LogoProps = {
   width?: number;
   height?: number;
 };
 
-export default function HomePage() {
-  const MonCashLogo = ({ width = 72, height = 28 }: LogoProps) => (
-    <svg width={width} height={height} viewBox="0 0 72 28">
-      <path
-        d="M4,1 Q0,-1 -1,5 L-1,22 Q0,28 4,26 Q28,18 52,14 Q57,12 52,10 Q28,6 4,1 Z"
-        fill="#cc1c2e"
-        stroke="#cc1c2e"
-        strokeWidth="4"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-      <text x="6" y="17" fontFamily="Arial, sans-serif" fontSize="8" fontWeight="900" fill="white">
-        MON
-      </text>
-      <text x="60" y="19" fontFamily="Arial, sans-serif" fontSize="13" fontWeight="900" fill="#777">
-        cash
-      </text>
-    </svg>
-  );
+// Sorti du composant HomePage pour éviter d'être recréé à chaque rendu
+const MonCashLogo = ({ width = 72, height = 28 }: LogoProps) => (
+  // viewBox élargi (avec offset négatif) pour englober les coordonnées
+  // négatives du path ci-dessous, qui étaient coupées auparavant
+  <svg width={width} height={height} viewBox="-2 -2 76 32" role="img" aria-label="MonCash">
+    <path
+      d="M4,1 Q0,-1 -1,5 L-1,22 Q0,28 4,26 Q28,18 52,14 Q57,12 52,10 Q28,6 4,1 Z"
+      fill="#cc1c2e"
+      stroke="#cc1c2e"
+      strokeWidth="4"
+      strokeLinejoin="round"
+      strokeLinecap="round"
+    />
+    <text x="6" y="17" fontFamily="Arial, sans-serif" fontSize="8" fontWeight="900" fill="white">
+      MON
+    </text>
+    <text x="60" y="19" fontFamily="Arial, sans-serif" fontSize="13" fontWeight="900" fill="#777">
+      cash
+    </text>
+  </svg>
+);
 
+export default function HomePage() {
   const stats = [
     { icon: "👥", label: "Joueurs inscrits", value: "52" },
     { icon: "✅", label: "Retraits effectués", value: "26" },
@@ -40,7 +57,7 @@ export default function HomePage() {
     <main className="min-h-screen bg-[#0a0a0a] text-white font-sans overflow-hidden">
       <div className="overflow-hidden border-b border-yellow-400/20 bg-[#08130D]">
         <div
-          className="flex w-max"
+          className="flex w-max marquee-track"
           style={{ animation: "zonarenaMarquee 24s linear infinite" }}
         >
           {[0, 1].map((copy) => (
@@ -67,6 +84,11 @@ export default function HomePage() {
             @keyframes zonarenaMarquee {
               from { transform: translateX(0); }
               to { transform: translateX(-50%); }
+            }
+            @media (prefers-reduced-motion: reduce) {
+              .marquee-track {
+                animation: none !important;
+              }
             }
           `}
         </style>
@@ -106,7 +128,7 @@ export default function HomePage() {
 
         <div className="relative">
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-green-400/30 bg-green-400/10 px-4 py-2 text-sm font-black text-green-400">
-            🟢 Tournois sponsorisés · gains en Gourdes
+            <span aria-hidden="true">🟢</span> Tournois sponsorisés · gains en Gourdes
           </div>
 
           <h1 className="text-5xl font-black leading-[1.08] tracking-tight md:text-6xl">
@@ -115,10 +137,10 @@ export default function HomePage() {
           </h1>
 
           <div className="mt-5 space-y-2 text-[18px] font-bold text-zinc-300">
-            <p>🎁 Tournois sponsorisés GRATUITS</p>
-             <p>🎁 Tournois Pro disponible</p>
-            <p>💰 Gagne de L'argent</p>
-            <p>⚔️ Défie tes amis en Duel</p>
+            <p><span aria-hidden="true">🎁</span> Tournois sponsorisés GRATUITS</p>
+             <p><span aria-hidden="true">🎁</span> Tournois Pro disponible</p>
+            <p><span aria-hidden="true">💰</span> Gagne de L'argent</p>
+            <p><span aria-hidden="true">⚔️</span> Défie tes amis en Duel</p>
           </div>
 
           <p className="mt-5 max-w-sm text-[16px] font-medium leading-relaxed text-zinc-400">
@@ -149,7 +171,7 @@ export default function HomePage() {
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <p className="text-xs text-zinc-600">Prochain tournoi</p>
-                  <h3 className="text-lg font-black">⚑ Drapeaux Battle</h3>
+                  <h3 className="text-lg font-black"><span aria-hidden="true">⚑</span> Drapeaux Battle</h3>
                 </div>
                 <div className="text-right">
                   <span className="rounded-full border border-green-400/30 bg-green-400/10 px-3 py-1 text-xs font-black text-green-400">
@@ -194,7 +216,7 @@ export default function HomePage() {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {stats.map((s) => (
             <div key={s.label} className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-center transition hover:-translate-y-1 hover:border-yellow-400/30">
-              <div className="text-2xl">{s.icon}</div>
+              <div className="text-2xl" aria-hidden="true">{s.icon}</div>
               <p className="mt-2 text-2xl font-black text-yellow-400">{s.value}</p>
               <p className="mt-1 text-xs font-semibold text-zinc-500">{s.label}</p>
             </div>
@@ -261,7 +283,7 @@ export default function HomePage() {
           {winners.map((w) => (
             <div key={w.name} className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 transition hover:-translate-y-1 hover:border-green-400/30">
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-2xl">🏆</span>
+                <span className="text-2xl" aria-hidden="true">🏆</span>
                 <span className="rounded-full bg-green-400/10 px-3 py-1 text-xs font-black text-green-400">Payé</span>
               </div>
               <h3 className="text-sm font-black text-zinc-100">{w.name}</h3>

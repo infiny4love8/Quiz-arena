@@ -3,12 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 
 const inputCls =
   "w-full rounded-xl bg-[#09090b] border border-white/10 px-4 py-3 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-yellow-400/50 transition";
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="mb-4">
       <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
@@ -22,13 +22,23 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setLoading(true);
+    setError(null);
 
     const formData = new FormData(e.currentTarget);
+    const acceptTerms = formData.get("acceptTerms");
+
+    if (!acceptTerms) {
+      setError("Tu dois accepter les conditions d'utilisation pour continuer.");
+      return;
+    }
+
+    setLoading(true);
+
     const data = {
       fullName: String(formData.get("fullName")),
       moncashNumber: String(formData.get("moncashNumber")),
@@ -48,14 +58,14 @@ export default function RegisterPage() {
       const result = await res.json();
 
       if (!res.ok) {
-        alert(result.message || "Erreur lors de l'inscription");
+        setError(result.message || "Erreur lors de l'inscription");
         setLoading(false);
         return;
       }
 
       setSuccess(true);
     } catch {
-      alert("Erreur lors de l'inscription");
+      setError("Erreur de connexion. Vérifie ta connexion internet et réessaie.");
     }
 
     setLoading(false);
@@ -71,6 +81,11 @@ export default function RegisterPage() {
         }
         .border-light {
           animation: borderRun 3s linear infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .border-light {
+            animation: none !important;
+          }
         }
       `}</style>
 
@@ -135,11 +150,37 @@ export default function RegisterPage() {
 
               {/* ── FORM ── */}
               {!success && (
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} noValidate>
                   <h1 className="text-2xl font-black text-yellow-400">Créer un compte</h1>
                   <p className="mt-1 mb-6 text-sm text-zinc-500">
                     Rejoins d'autres joueurs et commence à gagner
                   </p>
+
+                  {/* Bandeau d'erreur inline — remplace l'ancien alert() */}
+                  {error && (
+                    <div
+                      role="alert"
+                      className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-400/30 bg-red-400/5 px-4 py-3 text-[13px] leading-relaxed text-red-400"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16" height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="mt-0.5 shrink-0"
+                        aria-hidden="true"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                      <span>{error}</span>
+                    </div>
+                  )}
 
                   <Field label="Nom complet">
                     <input name="fullName" placeholder="Jean Baptiste" required className={inputCls} />
@@ -163,9 +204,36 @@ export default function RegisterPage() {
                       <input name="age" type="number" placeholder="25" min="18" required className={inputCls} />
                     </Field>
                     <Field label="Mot de passe">
-                      <input name="password" type="password" placeholder="••••••••" required className={inputCls} />
+                      <input
+                        name="password"
+                        type="password"
+                        placeholder="••••••••"
+                        minLength={6}
+                        required
+                        className={inputCls}
+                      />
                     </Field>
                   </div>
+
+                  {/* Case CGU obligatoire — nécessaire dès qu'il y a de l'argent réel en jeu (MonCash, gains) */}
+                  <label className="mb-5 mt-1 flex items-start gap-2.5 text-[13px] leading-relaxed text-zinc-400">
+                    <input
+                      type="checkbox"
+                      name="acceptTerms"
+                      required
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-[#09090b] accent-yellow-400"
+                    />
+                    <span>
+                      J'accepte les{" "}
+                      <Link href="/conditions" className="font-semibold text-yellow-400 underline">
+                        conditions d'utilisation
+                      </Link>{" "}
+                      et la{" "}
+                      <Link href="/confidentialite" className="font-semibold text-yellow-400 underline">
+                        politique de confidentialité
+                      </Link>
+                    </span>
+                  </label>
 
                   <button
                     type="submit"

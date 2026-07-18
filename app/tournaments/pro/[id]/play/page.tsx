@@ -356,78 +356,62 @@ export default function ProPlayPage() {
 
   return (
     <main
-      className="relative min-h-screen overflow-hidden bg-black text-white flex items-center justify-center px-5 py-10"
-      style={{ background: "radial-gradient(circle at 50% 70%, #2a1200 0%, #0a0604 60%, #050302 100%)" }}
+      className="relative min-h-screen overflow-hidden bg-black text-white flex items-center justify-center px-4 py-6"
+      style={{
+        background:
+          "radial-gradient(circle at 50% 70%, #2a1200 0%, #0a0604 60%, #050302 100%)",
+      }}
     >
       <AuraBackground />
 
       <div
-        className="relative z-10 w-full max-w-2xl overflow-hidden rounded-3xl border border-orange-400/40 bg-zinc-950/90 p-8 shadow-2xl"
+        className="relative z-10 w-full max-w-xl overflow-hidden rounded-3xl border border-orange-400/40 bg-zinc-950/90 p-5 shadow-2xl sm:p-7"
         style={{ boxShadow: "0 0 70px rgba(251,146,60,0.25)" }}
       >
         <div className="relative text-center">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-green-400/30 bg-green-400/10 px-4 py-2 text-xs font-black text-green-400">
-            ✅ Accès Pro validé · Bonne chance !
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-green-400/30 bg-green-400/10 px-4 py-2 text-xs font-black text-green-400">
+            ✅ Accès Pro validé
           </div>
 
           <div
-            className="mx-auto mb-3 flex h-28 w-28 items-center justify-center rounded-full text-6xl"
+            className="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-full text-5xl"
             style={{
-              background: "radial-gradient(circle, rgba(251,146,60,0.45), transparent 70%)",
+              background:
+                "radial-gradient(circle, rgba(251,146,60,0.45), transparent 70%)",
               animation: "auraPulse 1.1s ease-in-out infinite",
             }}
           >
             {emoji}
           </div>
 
-          <p
-            className="text-4xl font-black text-yellow-400"
-            style={{ textShadow: "0 0 18px rgba(250,204,21,0.6)" }}
-          >
-            {power.toLocaleString("fr-FR")}
-          </p>
-
-          <h1 className="mt-4 text-4xl font-black uppercase leading-tight tracking-wide">
-            Bienvenue dans le <span className="text-orange-400">Challenge Pro</span>
+          <h1 className="mt-3 text-2xl font-black leading-tight tracking-wide sm:text-3xl">
+            {tournament.name}
           </h1>
 
-          <p className="mt-3 text-zinc-400">{tournament.name}</p>
+          <p className="mt-2 text-sm font-semibold text-orange-400">
+            {gameName}
+          </p>
 
-          <div className="mt-6 rounded-2xl border border-white/10 bg-black/60 p-5">
-            <p className="text-xs font-bold uppercase tracking-widest text-orange-400">
-              Jeu du challenge
-            </p>
-            <h2 className="mt-2 text-3xl font-black uppercase">{gameName}</h2>
-            <p className="mt-2 text-sm text-zinc-500">
-              Fais ton meilleur score et bats tes concurents pour gagner votre prime
-            </p>
-          </div>
+          <div className="mt-5 rounded-2xl border border-white/10 bg-black/60 p-4 text-left">
+            <h2 className="text-sm font-black uppercase tracking-widest text-yellow-400">
+              🏆 Récompenses
+            </h2>
 
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
-            <div className="rounded-2xl border border-white/10 bg-black/60 p-4">
-              <p className="text-xs text-zinc-500">Récompense</p>
-              <p className="mt-1 text-xl font-black text-yellow-400">220-440 GDS</p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-black/60 p-4">
-              <p className="text-xs text-zinc-500">Chrono</p>
-              <p className="mt-1 text-xl font-black text-yellow-400">{tournament.play_window} min</p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-black/60 p-4">
-              <p className="text-xs text-zinc-500">Tentative</p>
-              <p className="mt-1 text-xl font-black text-yellow-400">Unique</p>
+            <div className="mt-3 space-y-2 text-sm text-zinc-300">
+              <p>💰 De 220 GDS jusqu&apos;à 440 GDS pour le 1er</p>
+              <p>⭐ De 15 à 40 XP pour tous les participants</p>
+              <p>🎫 1 ticket sponsorisé pour le 2e</p>
+              <p>💚 Cashback pour le 3e et les autres joueurs</p>
             </div>
           </div>
 
-          <div className="mt-6 rounded-2xl border border-white/10 bg-black/60 p-5 text-left">
-            <h3 className="font-black uppercase tracking-wide text-orange-400">Avant de commencer</h3>
-            <ul className="mt-3 space-y-2 text-sm text-zinc-300">
-              <li>🎯 Donne ton maximum dès le premier essai.</li>
-              <li>⚡ Ton score est envoyé automatiquement à la fin.</li>
-              <li>🏆 Le classement sera affiché après la fin du tournoi.</li>
-              <li>💰 Les meilleurs scores remportent les récompenses.</li>
-            </ul>
+          <div className="mt-4 rounded-2xl border border-white/10 bg-black/60 px-4 py-3">
+            <p className="text-sm font-black text-yellow-400">
+              🎯 Une seule tentative
+            </p>
+            <p className="mt-2 text-xs leading-relaxed text-zinc-400">
+              Ton score sera envoyé automatiquement à la fin du jeu.
+            </p>
           </div>
 
           {error && (
@@ -439,24 +423,18 @@ export default function ProPlayPage() {
           <button
             onClick={handleStartClick}
             disabled={starting}
-            className="mt-7 w-full rounded-xl bg-gradient-to-r from-orange-400 to-yellow-400 py-4 text-sm font-black uppercase tracking-wide text-black shadow-lg transition hover:scale-[1.03] disabled:opacity-50"
+            className="mt-6 w-full rounded-xl bg-gradient-to-r from-orange-400 to-yellow-400 py-4 text-sm font-black uppercase tracking-wide text-black shadow-lg transition hover:scale-[1.03] disabled:opacity-50"
             style={{ boxShadow: "0 8px 30px rgba(251,146,60,0.3)" }}
           >
-            {starting ? "Ouverture de l’arène..." : "Commencer l’arène 🚀"}
+            {starting ? "Ouverture du jeu..." : "Commencer le jeu 🚀"}
           </button>
 
           <button
-            onClick={toggleSound}
-            className={`mt-3 w-full rounded-xl border py-2 text-xs font-bold transition ${
-              soundOn ? "border-yellow-400/50 text-yellow-400" : "border-white/15 text-zinc-400"
-            }`}
+            onClick={() => router.replace("/dashboard")}
+            className="mt-3 w-full rounded-xl border border-white/15 py-3 text-sm font-semibold text-zinc-400 transition hover:border-yellow-400/40 hover:text-yellow-400"
           >
-            {soundOn ? "🔊 Rugissement activé" : "🔈 Activer le rugissement"}
+            ← Retour au Dashboard
           </button>
-
-          <p className="mt-4 text-center text-xs text-zinc-500">
-            Respire, concentre-toi et joue ton meilleur round.
-          </p>
         </div>
       </div>
     </main>

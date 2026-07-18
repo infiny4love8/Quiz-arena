@@ -51,10 +51,10 @@ const GAME_LABELS: Record<string, string> = {
 
 // ─── Étapes du parcours — juste de la pédagogie, aucune logique ──────────────
 const HOW_IT_WORKS = [
-  { icon: "ti-coin",         text: "Utilise des Gourdes pour rejoindre le tournoi" },
-  { icon: "ti-player-play",  text: "Joue une seule fois — ton score est définitif" },
-  { icon: "ti-hourglass",    text: "Attends la fin du chrono du tournoi" },
-  { icon: "ti-gift",         text: "Reçois ta récompense automatiquement" },
+  { icon: "ti-coin",         text: "Utilise 50 Gourdes pour rejoindre le tournoi" },
+  { icon: "ti-player-play",  text: "Joue une seule fois par tournois" },
+  { icon: "ti-hourglass",    text: "Attends la fin du temps pour voir les resultats " },
+  { icon: "ti-gift",         text: "Recevez votre Recompense automatiquement" },
 ];
 
 // ─── FIX 4 : Prix corrects ────────────────────────────────────────────────────
@@ -126,16 +126,16 @@ function Countdown({ startsAt, playWindow, status }: {
   return (
     <p style={{
       textAlign: "center",
-      fontSize: 12,
+      fontSize: 13,
       fontVariantNumeric: "tabular-nums",
-      color: urgent ? "#D4AF6A" : status === "active" ? "rgba(111,191,142,.75)" : "rgba(243,233,210,.32)",
+      color: urgent ? "#4EDB8E" : status === "active" ? "#6EE8A8" : "#8FA089",
       fontWeight: urgent || status === "active" ? 600 : 400,
       margin: 0,
     }}>
       {status === "active" && (
         <span style={{
           display: "inline-block", width: 5, height: 5, borderRadius: "50%",
-          background: "#6FBF8E", marginRight: 6, verticalAlign: "middle",
+          background: "#39D97A", marginRight: 6, verticalAlign: "middle",
           animation: "pulseDot 1.5s infinite",
         }} />
       )}
@@ -196,7 +196,7 @@ function LockDisplay({ status }: { status: string }) {
         {phase === "locked" && (
           <div style={{
             position: "absolute", inset: -5, borderRadius: "50%",
-            background: "rgba(212,175,106,.08)",
+            background: "rgba(78,219,142,.14)",
             animation: "lockHalo 2s ease-in-out infinite",
           }} />
         )}
@@ -204,11 +204,10 @@ function LockDisplay({ status }: { status: string }) {
         {/* Cercle principal */}
         <div style={{
           width: 52, height: 52, borderRadius: "50%",
-          background: phase === "unlocking"
-            ? "rgba(111,191,142,.12)" : "rgba(212,175,106,.08)",
+          background: phase === "unlocking" ? "#16261B" : "#1D2E22",
           border: phase === "unlocking"
-            ? "1px solid rgba(111,191,142,.35)"
-            : "0.5px solid rgba(212,175,106,.22)",
+            ? "1px solid #3FCB7D"
+            : "0.5px solid #3A5940",
           display: "flex", alignItems: "center", justifyContent: "center",
           animation: phase === "locked" ? "lockFloat 3s ease-in-out infinite"
             : phase === "unlocking" ? "lockBurst .8s ease forwards"
@@ -218,8 +217,8 @@ function LockDisplay({ status }: { status: string }) {
           <i
             className={phase === "unlocking" ? "ti ti-lock-open" : "ti ti-lock"}
             style={{
-              fontSize: 22,
-              color: phase === "unlocking" ? "#8FD9AF" : "#D4AF6A",
+              fontSize: 24,
+              color: phase === "unlocking" ? "#6EE8A8" : "#4EDB8E",
               transition: "color .3s",
             }}
             aria-hidden="true"
@@ -234,7 +233,7 @@ function LockDisplay({ status }: { status: string }) {
                 position: "absolute",
                 top: "50%", left: "50%",
                 width: 5, height: 5, borderRadius: "50%",
-                background: "#8FD9AF",
+                background: "#39D97A",
                 transform: `rotate(${deg}deg) translateY(-28px)`,
                 animation: "sparkle .7s ease-out forwards",
                 opacity: 0,
@@ -246,7 +245,7 @@ function LockDisplay({ status }: { status: string }) {
 
       {phase === "locked" && (
         <p style={{
-          fontSize: 12, color: "rgba(243,233,210,.4)",
+          fontSize: 13, color: "#8FA089",
           textAlign: "center", lineHeight: 1.5, margin: 0,
         }}>
           Disponible bientôt · Notification à l&apos;ouverture
@@ -254,7 +253,7 @@ function LockDisplay({ status }: { status: string }) {
       )}
       {phase === "unlocking" && (
         <p style={{
-          fontSize: 13, color: "#8FD9AF", fontWeight: 600,
+          fontSize: 14, color: "#6EE8A8", fontWeight: 600,
           animation: "fadeUp .4s ease", margin: 0,
         }}>
           🔓 Tournoi déverrouillé !
@@ -268,13 +267,13 @@ function LockDisplay({ status }: { status: string }) {
 function HowItWorksStrip() {
   return (
     <div style={{
-      background: "rgba(212,175,106,.025)",
-      border: "0.5px solid rgba(212,175,106,.16)",
+      background: "#1B221C",
+      border: "0.5px solid #2E3830",
       borderRadius: 6, padding: "16px 18px", marginBottom: 16,
     }}>
       <p style={{
-        fontSize: 10, textTransform: "uppercase", letterSpacing: ".14em",
-        color: "#D4AF6A", marginBottom: 12, fontWeight: 700,
+        fontSize: 12, textTransform: "uppercase", letterSpacing: ".14em",
+        color: "#4EDB8E", marginBottom: 12, fontWeight: 700,
       }}>
         Comment ça marche
       </p>
@@ -286,22 +285,22 @@ function HowItWorksStrip() {
         {HOW_IT_WORKS.map((s, i) => (
           <div key={i} style={{
             display: "flex", alignItems: "center", gap: 10,
-            background: "rgba(243,233,210,.02)",
-            border: "0.5px solid rgba(243,233,210,.07)",
+            background: "#232B24",
+            border: "0.5px solid #28312B",
             borderRadius: 5, padding: "10px 12px",
           }}>
             <span style={{
               width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
-              background: "rgba(212,175,106,.1)",
-              border: "0.5px solid rgba(212,175,106,.28)",
+              background: "#1D2E22",
+              border: "0.5px solid #3A5940",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 11, fontWeight: 700, color: "#D4AF6A",
+              fontSize: 13, fontWeight: 700, color: "#4EDB8E",
               fontFamily: "'Playfair Display', serif",
             }}>
               {i + 1}
             </span>
-            <p style={{ fontSize: 12.5, color: "rgba(243,233,210,.65)", lineHeight: 1.4, margin: 0 }}>
-              <i className={`ti ${s.icon}`} style={{ fontSize: 12, color: "#D4AF6A", marginRight: 5 }} aria-hidden="true" />
+            <p style={{ fontSize: 14, color: "#C7D6C4", lineHeight: 1.4, margin: 0 }}>
+              <i className={`ti ${s.icon}`} style={{ fontSize: 13, color: "#8FA089", marginRight: 5 }} aria-hidden="true" />
               {s.text}
             </p>
           </div>
@@ -329,68 +328,68 @@ function TournamentCard({
 
   return (
     <div style={{
-      background: "linear-gradient(160deg,#0E1F16,#081209)",
+      background: "#232B24",
       border: isActive
-        ? "1px solid rgba(212,175,106,.3)"
+        ? "1px solid #4EDB8E"
         : isFinished
-          ? "0.5px solid rgba(212,175,106,.09)"
-          : "0.5px solid rgba(212,175,106,.16)",
+          ? "0.5px solid #28312B"
+          : "0.5px solid #2E3830",
       borderRadius: 6, overflow: "hidden",
       display: "flex", flexDirection: "column",
       animation: "cardIn .4s ease both",
-      boxShadow: isActive ? "0 8px 24px rgba(0,0,0,.4)" : "0 6px 18px rgba(0,0,0,.28)",
+      boxShadow: isActive ? "0 6px 18px rgba(0,0,0,.07)" : "0 2px 10px rgba(0,0,0,.04)",
       transition: "border .6s, box-shadow .6s",
     }}>
 
       {/* Header */}
       <div style={{
         padding: "13px 15px",
-        borderBottom: "0.5px solid rgba(212,175,106,.14)",
+        borderBottom: "0.5px solid #28312B",
         display: "flex", alignItems: "center", gap: 10,
       }}>
         <div style={{
           width: 36, height: 36, borderRadius: 4, flexShrink: 0,
-          background: isActive ? "rgba(111,191,142,.1)" : "rgba(212,175,106,.09)",
+          background: isActive ? "#16261B" : "#1D2E22",
           border: isActive
-            ? "0.5px solid rgba(111,191,142,.24)"
-            : "0.5px solid rgba(212,175,106,.22)",
+            ? "0.5px solid #7ED957"
+            : "0.5px solid #3A5940",
           display: "flex", alignItems: "center", justifyContent: "center",
-          color: isActive ? "#8FD9AF" : "#D4AF6A",
+          color: isActive ? "#6EE8A8" : "#8FA089",
           transition: "all .5s",
         }}>
-          <i className={`ti ${GAME_ICONS[t.game_type]}`} style={{ fontSize: 17 }} aria-hidden="true" />
+          <i className={`ti ${GAME_ICONS[t.game_type]}`} style={{ fontSize: 18 }} aria-hidden="true" />
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{
-            fontSize: 14, fontWeight: 600, color: "#F3E9D2",
+            fontSize: 15, fontWeight: 600, color: "#F0F7EE",
             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
             fontFamily: "'Playfair Display', serif",
           }}>{t.name}</p>
-          <p style={{ fontSize: 11, color: "rgba(243,233,210,.42)", marginTop: 2 }}>
+          <p style={{ fontSize: 13, color: "#8FA089", marginTop: 2 }}>
             {GAME_LABELS[t.game_type]} · {t.play_window} min
           </p>
         </div>
 
         <span style={{
           display: "inline-flex", alignItems: "center", gap: 5,
-          fontSize: 11, fontWeight: 600, padding: "3px 9px",
+          fontSize: 13, fontWeight: 600, padding: "3px 9px",
           borderRadius: 4, flexShrink: 0,
-          background: isActive ? "rgba(111,191,142,.1)"
-            : isFinished ? "rgba(243,233,210,.04)"
-            : "rgba(212,175,106,.09)",
-          color: isActive ? "#8FD9AF"
-            : isFinished ? "rgba(243,233,210,.38)"
-            : "#D4AF6A",
-          border: isActive ? "0.5px solid rgba(111,191,142,.28)"
-            : isFinished ? "0.5px solid rgba(243,233,210,.08)"
-            : "0.5px solid rgba(212,175,106,.24)",
+          background: isActive ? "#16261B"
+            : isFinished ? "#1B221C"
+            : "#1D2E22",
+          color: isActive ? "#6EE8A8"
+            : isFinished ? "#5E6E5C"
+            : "#4EDB8E",
+          border: isActive ? "0.5px solid #7ED957"
+            : isFinished ? "0.5px solid #28312B"
+            : "0.5px solid #3A5940",
           transition: "all .5s",
         }}>
           {isActive && (
             <span style={{
               width: 5, height: 5, borderRadius: "50%",
-              background: "#6FBF8E", flexShrink: 0,
+              background: "#39D97A", flexShrink: 0,
               animation: "pulseDot 1.5s infinite",
             }} />
           )}
@@ -412,12 +411,12 @@ function TournamentCard({
           ].map((chip, i) => (
             <span key={i} style={{
               display: "inline-flex", alignItems: "center", gap: 4,
-              fontSize: 11, fontWeight: 600, color: "rgba(243,233,210,.6)",
-              background: "rgba(243,233,210,.03)",
-              border: "0.5px solid rgba(243,233,210,.09)",
+              fontSize: 13, fontWeight: 600, color: "#C7D6C4",
+              background: "#1B221C",
+              border: "0.5px solid #28312B",
               borderRadius: 4, padding: "3px 8px",
             }}>
-              <i className={`ti ${chip.icon}`} style={{ fontSize: 11, color: "#D4AF6A" }} aria-hidden="true" />
+              <i className={`ti ${chip.icon}`} style={{ fontSize: 13, color: "#4EDB8E" }} aria-hidden="true" />
               {chip.text}
             </span>
           ))}
@@ -426,25 +425,25 @@ function TournamentCard({
         {/* Prizes */}
         {[
           {
-            bg: "rgba(212,175,106,.08)", bd: "rgba(212,175,106,.26)",
-            ic: "ti-medal", icC: "#D4AF6A", lbl: "1er place",
+            bg: "#1D2E22", bd: "#3A5940",
+            ic: "ti-medal", icC: "#4EDB8E", lbl: "1er place",
             // FIX 4 : affichage prix dynamique
-            val: isActive ? `${prizeNow} GDS` : "220 – 440 GDS", vc: "#D4AF6A",
+            val: isActive ? `${prizeNow} GDS` : "220 – 440 GDS + 40xp", vc: "#4EDB8E",
           },
           {
-            bg: "rgba(243,233,210,.03)", bd: "rgba(243,233,210,.09)",
-            ic: "ti-ticket", icC: "rgba(243,233,210,.55)", lbl: "2e place",
-            val: "1 ticket sponsorisé", vc: "rgba(243,233,210,.7)",
+            bg: "#1B221C", bd: "#28312B",
+            ic: "ti-ticket", icC: "#8FA089", lbl: "2e place",
+            val: "1 ticket sponsorisé + 25xp", vc: "#F0F7EE",
           },
           {
-            bg: "rgba(243,233,210,.02)", bd: "rgba(243,233,210,.07)",
-            ic: "ti-medal-2", icC: "rgba(243,233,210,.45)", lbl: "3e place",
-            val: "10 GDS + 20 XP", vc: "rgba(243,233,210,.58)",
+            bg: "#12160F", bd: "#28312B",
+            ic: "ti-medal-2", icC: "#5E6E5C", lbl: "3e place",
+            val: "10 GDS + 20 XP", vc: "#C7D6C4",
           },
           {
-            bg: "rgba(243,233,210,.02)", bd: "rgba(243,233,210,.07)",
-            ic: "ti-refresh", icC: "rgba(243,233,210,.32)", lbl: "Autres joueurs",
-            val: "5 GDS + 15 XP", vc: "rgba(243,233,210,.4)",
+            bg: "#12160F", bd: "#28312B",
+            ic: "ti-refresh", icC: "#5E6E5C", lbl: "Autres joueurs",
+            val: "5 GDS + 15 XP", vc: "#8FA089",
           },
         ].map((p, i) => (
           <div key={i} style={{
@@ -452,24 +451,24 @@ function TournamentCard({
             padding: "7px 10px", borderRadius: 4,
             background: p.bg, border: `0.5px solid ${p.bd}`,
           }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "rgba(243,233,210,.55)" }}>
-              <i className={`ti ${p.ic}`} style={{ fontSize: 13, color: p.icC }} aria-hidden="true" />
+            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, color: "#C7D6C4" }}>
+              <i className={`ti ${p.ic}`} style={{ fontSize: 14, color: p.icC }} aria-hidden="true" />
               {p.lbl}
             </span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: p.vc }}>{p.val}</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: p.vc }}>{p.val}</span>
           </div>
         ))}
 
         {/* FIX 4 : Grille prix selon joueurs — upcoming seulement */}
         {t.status === "upcoming" && (
           <div style={{
-            background: "rgba(243,233,210,.02)",
-            border: "0.5px solid rgba(243,233,210,.06)",
+            background: "#12160F",
+            border: "0.5px solid #28312B",
             borderRadius: 4, padding: "9px 11px",
           }}>
             <p style={{
-              fontSize: 10, textTransform: "uppercase", letterSpacing: ".1em",
-              color: "rgba(243,233,210,.3)", marginBottom: 7, fontWeight: 700,
+              fontSize: 12, textTransform: "uppercase", letterSpacing: ".1em",
+              color: "#8FA089", marginBottom: 7, fontWeight: 700,
             }}>
               Gain 1er selon le nombre de joueurs
             </p>
@@ -477,13 +476,13 @@ function TournamentCard({
               {[5, 6, 7, 8, 9, 10].map((n) => (
                 <div key={n} style={{
                   textAlign: "center", padding: "4px", borderRadius: 4,
-                  background: t.player_count >= n ? "rgba(212,175,106,.09)" : "rgba(243,233,210,.02)",
-                  border: `0.5px solid ${t.player_count >= n ? "rgba(212,175,106,.24)" : "rgba(243,233,210,.05)"}`,
+                  background: t.player_count >= n ? "#1D2E22" : "#232B24",
+                  border: `0.5px solid ${t.player_count >= n ? "#3A5940" : "#28312B"}`,
                 }}>
-                  <div style={{ fontSize: 10, color: "rgba(243,233,210,.32)" }}>{n}j</div>
+                  <div style={{ fontSize: 12, color: "#5E6E5C" }}>{n}j</div>
                   <div style={{
-                    fontSize: 11, fontWeight: 600,
-                    color: t.player_count >= n ? "#D4AF6A" : "rgba(243,233,210,.42)",
+                    fontSize: 13, fontWeight: 600,
+                    color: t.player_count >= n ? "#4EDB8E" : "#8FA089",
                   }}>
                     {getPrize(n)}{n === 10 ? " ✦" : ""}
                   </div>
@@ -501,24 +500,24 @@ function TournamentCard({
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             <div style={{
               display: "flex", justifyContent: "space-between",
-              fontSize: 12, color: "rgba(243,233,210,.42)",
+              fontSize: 13, color: "#C7D6C4",
             }}>
               <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <span style={{
                   width: 5, height: 5, borderRadius: "50%", flexShrink: 0,
-                  background: isFull ? "#C4432D" : isActive ? "#6FBF8E" : "#D4AF6A",
+                  background: isFull ? "#F0938F" : isActive ? "#39D97A" : "#4EDB8E",
                   animation: isActive ? "pulseDot 1.5s infinite" : "none",
                 }} />
                 {t.player_count} / {t.max_players} joueurs
               </span>
               <span>min {t.min_players}</span>
             </div>
-            <div style={{ height: 3, borderRadius: 2, background: "rgba(243,233,210,.08)", overflow: "hidden" }}>
+            <div style={{ height: 3, borderRadius: 2, background: "#28312B", overflow: "hidden" }}>
               <div style={{
                 height: "100%", borderRadius: 2,
                 background: isActive
-                  ? "linear-gradient(90deg,#6FBF8E,#B9DEC6)"
-                  : "linear-gradient(90deg,#B08A46,#D4AF6A)",
+                  ? "linear-gradient(90deg,#3FCB7D,#7ED957)"
+                  : "linear-gradient(90deg,#1FA362,#4EDB8E)",
                 width: `${pct}%`, transition: "width .6s ease",
               }} />
             </div>
@@ -528,22 +527,22 @@ function TournamentCard({
         {/* Alertes */}
         {!hasCoins && user && isActive && !hasPlayed && (
           <div style={{
-            background: "rgba(196,67,45,.08)", border: "0.5px solid rgba(196,67,45,.22)",
-            borderRadius: 4, padding: "7px 10px", fontSize: 12,
-            color: "#E39485", display: "flex", gap: 6, lineHeight: 1.5,
+            background: "#2E1717", border: "0.5px solid #6B2E2E",
+            borderRadius: 4, padding: "7px 10px", fontSize: 13,
+            color: "#F0938F", display: "flex", gap: 6, lineHeight: 1.5,
           }}>
-            <i className="ti ti-coin-off" style={{ fontSize: 13, flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
+            <i className="ti ti-coin-off" style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
             Gourdes insuffisantes — tu as {user.coins} GDS, il en faut {t.entry_coins} GDS.
           </div>
         )}
 
         {hasPlayed && isActive && (
           <div style={{
-            background: "rgba(111,191,142,.08)", border: "0.5px solid rgba(111,191,142,.22)",
-            borderRadius: 4, padding: "7px 10px", fontSize: 12,
-            color: "#8FD9AF", display: "flex", alignItems: "center", gap: 6,
+            background: "#16261B", border: "0.5px solid #3FCB7D",
+            borderRadius: 4, padding: "7px 10px", fontSize: 13,
+            color: "#6EE8A8", display: "flex", alignItems: "center", gap: 6,
           }}>
-            <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" />
+            <i className="ti ti-check" style={{ fontSize: 14 }} aria-hidden="true" />
             Score enregistré · Une seule tentative — attends la fin du tournoi.
           </div>
         )}
@@ -559,15 +558,15 @@ function TournamentCard({
               onClick={() => onJoin(t.id)}
               style={{
                 width: "100%", borderRadius: 4, padding: 10,
-                fontSize: 13, fontWeight: 700,
+                fontSize: 14, fontWeight: 700,
                 cursor: canJoin ? "pointer" : "not-allowed",
                 background: canJoin
-                  ? "linear-gradient(135deg,#D4AF6A,#B08A46)"
-                  : "rgba(243,233,210,.04)",
+                  ? "linear-gradient(135deg,#4EDB8E,#1FA362)"
+                  : "#1B221C",
                 border: canJoin
-                  ? "1px solid #D4AF6A"
-                  : "0.5px solid rgba(243,233,210,.09)",
-                color: canJoin ? "#1a1204" : "rgba(243,233,210,.28)",
+                  ? "1px solid #4EDB8E"
+                  : "0.5px solid #28312B",
+                color: canJoin ? "#04150C" : "#5E6E5C",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
                 opacity: canJoin ? 1 : .5,
                 transition: "all .2s",
@@ -577,8 +576,8 @@ function TournamentCard({
                 <>
                   <span style={{
                     width: 12, height: 12, borderRadius: "50%",
-                    border: "2px solid rgba(26,18,4,.3)",
-                    borderTopColor: "#1a1204",
+                    border: "2px solid rgba(4,21,12,.3)",
+                    borderTopColor: "#04150C",
                     animation: "spin .7s linear infinite",
                     display: "inline-block",
                   }} />
@@ -586,7 +585,7 @@ function TournamentCard({
                 </>
               ) : isFull ? "Complet" : !hasCoins ? "Gourdes insuffisantes" : (
                 <>
-                  <i className="ti ti-player-play" style={{ fontSize: 13 }} aria-hidden="true" />
+                  <i className="ti ti-player-play" style={{ fontSize: 14 }} aria-hidden="true" />
                   Rejoindre — {t.entry_coins} GDS
                 </>
               )}
@@ -596,12 +595,12 @@ function TournamentCard({
           {isFinished && (
             <Link href={`/tournaments/pro/${t.id}/results`} style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              width: "100%", borderRadius: 4, padding: 10, fontSize: 13, fontWeight: 600,
-              background: "rgba(243,233,210,.03)",
-              border: "0.5px solid rgba(243,233,210,.08)",
-              color: "rgba(243,233,210,.42)", textDecoration: "none",
+              width: "100%", borderRadius: 4, padding: 10, fontSize: 14, fontWeight: 600,
+              background: "#1B221C",
+              border: "0.5px solid #28312B",
+              color: "#8FA089", textDecoration: "none",
             }}>
-              <i className="ti ti-trophy" style={{ fontSize: 13 }} aria-hidden="true" />
+              <i className="ti ti-trophy" style={{ fontSize: 14 }} aria-hidden="true" />
               Voir les résultats
             </Link>
           )}
@@ -627,27 +626,27 @@ function NotifPanel({ notifs, onRead, onClose }: {
   return (
     <div style={{
       position: "absolute", right: 0, top: 46, width: 296,
-      background: "#0E1F16",
-      border: "0.5px solid rgba(212,175,106,.18)",
+      background: "#232B24",
+      border: "0.5px solid #2E3830",
       borderRadius: 6, overflow: "hidden", zIndex: 100,
-      boxShadow: "0 20px 60px rgba(0,0,0,.75)",
+      boxShadow: "0 20px 60px rgba(0,0,0,.12)",
       animation: "fadeUp .2s ease",
     }}>
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "11px 13px",
-        borderBottom: "0.5px solid rgba(212,175,106,.12)",
+        borderBottom: "0.5px solid #28312B",
       }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: "#F3E9D2", fontFamily: "'Playfair Display', serif" }}>Notifications</p>
+        <p style={{ fontSize: 14, fontWeight: 600, color: "#F0F7EE", fontFamily: "'Playfair Display', serif" }}>Notifications</p>
         <button onClick={onClose} style={{
           background: "none", border: "none", cursor: "pointer",
-          color: "rgba(243,233,210,.4)", padding: 2,
+          color: "#5E6E5C", padding: 2,
         }}>
-          <i className="ti ti-x" style={{ fontSize: 15 }} aria-hidden="true" />
+          <i className="ti ti-x" style={{ fontSize: 16 }} aria-hidden="true" />
         </button>
       </div>
       {notifs.length === 0 ? (
-        <p style={{ padding: "20px", textAlign: "center", fontSize: 13, color: "rgba(243,233,210,.3)" }}>
+        <p style={{ padding: "20px", textAlign: "center", fontSize: 14, color: "#5E6E5C" }}>
           Aucune notification
         </p>
       ) : (
@@ -655,22 +654,22 @@ function NotifPanel({ notifs, onRead, onClose }: {
           {notifs.map((n) => (
             <div key={n.id} onClick={() => onRead(n.id)} style={{
               padding: "10px 13px",
-              borderBottom: "0.5px solid rgba(212,175,106,.08)",
+              borderBottom: "0.5px solid #28312B",
               cursor: "pointer",
-              background: !n.is_read ? "rgba(212,175,106,.04)" : "transparent",
+              background: !n.is_read ? "#1D2E22" : "transparent",
               display: "flex", gap: 9, alignItems: "flex-start",
             }}>
               <i className={`ti ${ICONS[n.type] ?? "ti-bell"}`}
-                style={{ fontSize: 14, color: "#D4AF6A", flexShrink: 0, marginTop: 1 }}
+                style={{ fontSize: 15, color: "#4EDB8E", flexShrink: 0, marginTop: 1 }}
                 aria-hidden="true" />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: "#F3E9D2" }}>{n.title}</p>
-                <p style={{ fontSize: 12, color: "rgba(243,233,210,.42)", lineHeight: 1.5, marginTop: 2 }}>{n.message}</p>
+                <p style={{ fontSize: 14, fontWeight: 600, color: "#F0F7EE" }}>{n.title}</p>
+                <p style={{ fontSize: 13, color: "#C7D6C4", lineHeight: 1.5, marginTop: 2 }}>{n.message}</p>
               </div>
               {!n.is_read && (
                 <span style={{
                   width: 6, height: 6, borderRadius: "50%",
-                  background: "#D4AF6A", flexShrink: 0, marginTop: 3,
+                  background: "#4EDB8E", flexShrink: 0, marginTop: 3,
                 }} />
               )}
             </div>
@@ -818,15 +817,15 @@ export default function TournamentsProPage() {
   if (loading) return (
     <main style={{
       minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-      background: "radial-gradient(circle at top,rgba(212,175,106,.07),transparent 40%),#08130D",
+      background: "radial-gradient(circle at top,rgba(78,219,142,.10),transparent 40%),#12160F",
     }}>
       <div style={{ textAlign: "center" }}>
         <div style={{
           width: 38, height: 38, borderRadius: "50%", margin: "0 auto 12px",
-          border: "2px solid rgba(212,175,106,.22)", borderTopColor: "#D4AF6A",
+          border: "2px solid #3A5940", borderTopColor: "#4EDB8E",
           animation: "spin .8s linear infinite",
         }} />
-        <p style={{ fontSize: 13, color: "rgba(243,233,210,.35)" }}>Chargement…</p>
+        <p style={{ fontSize: 14, color: "#8FA089" }}>Chargement…</p>
       </div>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </main>
@@ -845,14 +844,14 @@ export default function TournamentsProPage() {
         @keyframes cardIn     { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
         @keyframes fadeUp     { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
         @keyframes toastIn    { from{opacity:0;transform:translateX(14px)} to{opacity:1;transform:translateX(0)} }
-        .nav-l:hover          { background:rgba(212,175,106,.07)!important; color:#D4AF6A!important }
+        .nav-l:hover          { background:#1D2E22!important; color:#4EDB8E!important }
         @media(max-width:768px){ .lg-sd{display:none!important} .main-c{margin-left:0!important;padding-top:62px!important} }
       `}</style>
 
       <main style={{
         minHeight: "100vh",
-        background: "radial-gradient(circle at 65% 0%,rgba(212,175,106,.05),transparent 35%),#08130D",
-        color: "#F3E9D2", fontFamily: "'Inter',var(--font-sans,sans-serif)",
+        background: "radial-gradient(circle at 65% 0%,rgba(78,219,142,.08),transparent 35%),#12160F",
+        color: "#F0F7EE", fontFamily: "'Inter',var(--font-sans,sans-serif)",
       }}>
 
         {/* Toast */}
@@ -860,13 +859,13 @@ export default function TournamentsProPage() {
           <div style={{
             position: "fixed", top: 18, right: 18, zIndex: 300,
             display: "flex", alignItems: "center", gap: 8,
-            background: toast.ok ? "rgba(15,58,38,.94)" : "rgba(90,32,26,.94)",
-            border: `0.5px solid ${toast.ok ? "rgba(111,191,142,.4)" : "rgba(196,67,45,.4)"}`,
+            background: toast.ok ? "#16261B" : "#2E1717",
+            border: `0.5px solid ${toast.ok ? "#3FCB7D" : "#6B2E2E"}`,
             borderRadius: 6, padding: "9px 15px",
-            fontSize: 13, fontWeight: 600, color: "#F3E9D2",
-            animation: "toastIn .3s ease", backdropFilter: "blur(12px)",
+            fontSize: 14, fontWeight: 600, color: toast.ok ? "#8FF0BE" : "#F5B8B6",
+            animation: "toastIn .3s ease", boxShadow: "0 8px 24px rgba(0,0,0,.1)",
           }}>
-            <i className={`ti ${toast.ok ? "ti-check" : "ti-x"}`} style={{ fontSize: 14, color: toast.ok ? "#8FD9AF" : "#E39485" }} aria-hidden="true" />
+            <i className={`ti ${toast.ok ? "ti-check" : "ti-x"}`} style={{ fontSize: 15, color: toast.ok ? "#6EE8A8" : "#F0938F" }} aria-hidden="true" />
             {toast.msg}
           </div>
         )}
@@ -874,33 +873,33 @@ export default function TournamentsProPage() {
         {/* Sidebar desktop */}
         <aside className="lg-sd" style={{
           position: "fixed", left: 0, top: 0, width: 268, height: "100vh",
-          background: "#0A1810",
-          borderRight: "0.5px solid rgba(212,175,106,.14)",
+          background: "#232B24",
+          borderRight: "0.5px solid #2E3830",
           padding: 18, display: "flex", flexDirection: "column", zIndex: 30,
         }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", marginBottom: 18 }}>
             <span style={{
-              width: 34, height: 34, borderRadius: 4, background: "#D4AF6A",
+              width: 34, height: 34, borderRadius: 4, background: "#4EDB8E",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontWeight: 700, fontSize: 16, color: "#1a1204",
+              fontWeight: 700, fontSize: 17, color: "#F0F7EE",
               fontFamily: "'Playfair Display', serif",
             }}>Z</span>
-            <span style={{ fontSize: 16, fontWeight: 700, color: "#D4AF6A", fontFamily: "'Playfair Display', serif", letterSpacing: ".02em" }}>Zonarena</span>
+            <span style={{ fontSize: 17, fontWeight: 700, color: "#4EDB8E", fontFamily: "'Playfair Display', serif", letterSpacing: ".02em" }}>Zonarena</span>
           </Link>
 
           <div style={{
-            background: "rgba(212,175,106,.04)",
-            border: "0.5px solid rgba(212,175,106,.14)",
+            background: "#1B221C",
+            border: "0.5px solid #2E3830",
             borderRadius: 6, padding: "10px 12px", marginBottom: 13,
           }}>
-            <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: ".1em", color: "rgba(243,233,210,.32)" }}>Connecté</p>
-            <p style={{ fontSize: 13, fontWeight: 600, color: "#F3E9D2", marginTop: 3 }}>{user?.full_name}</p>
+            <p style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".1em", color: "#8FA089" }}>Connecté</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "#F0F7EE", marginTop: 3 }}>{user?.full_name}</p>
             <div style={{ display: "flex", gap: 10, marginTop: 3 }}>
-              <span style={{ fontSize: 11, color: "#D4AF6A" }}>
-                <i className="ti ti-coin" style={{ fontSize: 10 }} aria-hidden="true" /> {user?.coins} GDS
+              <span style={{ fontSize: 13, color: "#4EDB8E" }}>
+                <i className="ti ti-coin" style={{ fontSize: 12 }} aria-hidden="true" /> {user?.coins} GDS
               </span>
-              <span style={{ fontSize: 11, color: "rgba(243,233,210,.4)" }}>
-                <i className="ti ti-ticket" style={{ fontSize: 10 }} aria-hidden="true" /> {user?.tickets}
+              <span style={{ fontSize: 13, color: "#8FA089" }}>
+                <i className="ti ti-ticket" style={{ fontSize: 12 }} aria-hidden="true" /> {user?.tickets}
               </span>
             </div>
           </div>
@@ -909,10 +908,10 @@ export default function TournamentsProPage() {
             {NAV.map(([href, lbl]) => (
               <Link key={href} href={href} className="nav-l" style={{
                 display: "block", padding: "8px 12px", borderRadius: 4,
-                fontSize: 13, textDecoration: "none", transition: "all .15s",
-                background: href === "/tournaments/pro" ? "rgba(212,175,106,.1)" : "transparent",
-                color: href === "/tournaments/pro" ? "#D4AF6A" : "rgba(243,233,210,.5)",
-                border: href === "/tournaments/pro" ? "0.5px solid rgba(212,175,106,.2)" : "0.5px solid transparent",
+                fontSize: 14, textDecoration: "none", transition: "all .15s",
+                background: href === "/tournaments/pro" ? "#1D2E22" : "transparent",
+                color: href === "/tournaments/pro" ? "#4EDB8E" : "#C7D6C4",
+                border: href === "/tournaments/pro" ? "0.5px solid #3A5940" : "0.5px solid transparent",
                 fontWeight: href === "/tournaments/pro" ? 600 : 400,
               }}>{lbl}</Link>
             ))}
@@ -922,10 +921,10 @@ export default function TournamentsProPage() {
             onClick={async () => { await supabase.auth.signOut(); router.replace("/login"); }}
             style={{
               marginTop: 10, width: "100%", borderRadius: 4, padding: "8px 12px",
-              fontSize: 13, cursor: "pointer",
-              background: "rgba(196,67,45,.06)",
-              border: "0.5px solid rgba(196,67,45,.18)",
-              color: "#E39485", fontWeight: 600,
+              fontSize: 14, cursor: "pointer",
+              background: "#2E1717",
+              border: "0.5px solid #6B2E2E",
+              color: "#F0938F", fontWeight: 600,
             }}
           >Déconnexion</button>
         </aside>
@@ -936,52 +935,52 @@ export default function TournamentsProPage() {
             onClick={() => setMobileOpen(!mobileOpen)}
             style={{
               width: 36, height: 36, borderRadius: 4, cursor: "pointer",
-              background: "rgba(10,24,16,.9)",
-              border: "0.5px solid rgba(212,175,106,.2)",
+              background: "rgba(35,43,36,.92)",
+              border: "0.5px solid #2E3830",
               display: "flex", alignItems: "center", justifyContent: "center",
-              backdropFilter: "blur(12px)",
+              boxShadow: "0 2px 10px rgba(0,0,0,.06)",
             }}
           >
             <i className={`ti ${mobileOpen ? "ti-x" : "ti-menu-2"}`}
-              style={{ fontSize: 17, color: "#D4AF6A" }} aria-hidden="true" />
+              style={{ fontSize: 18, color: "#4EDB8E" }} aria-hidden="true" />
           </button>
         </div>
 
         {mobileOpen && (
           <>
             <div onClick={() => setMobileOpen(false)} style={{
-              position: "fixed", inset: 0, background: "rgba(0,0,0,.78)", zIndex: 40,
+              position: "fixed", inset: 0, background: "rgba(6,10,7,.55)", zIndex: 40,
             }} />
             <aside style={{
               position: "fixed", left: 0, top: 0, width: 268, height: "100vh",
-              background: "#0A1810",
-              borderRight: "0.5px solid rgba(212,175,106,.14)",
+              background: "#232B24",
+              borderRight: "0.5px solid #2E3830",
               padding: 18, zIndex: 50, display: "flex", flexDirection: "column", overflowY: "auto",
             }}>
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
                 <button onClick={() => setMobileOpen(false)}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(243,233,210,.35)" }}>
-                  <i className="ti ti-x" style={{ fontSize: 19 }} aria-hidden="true" />
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "#5E6E5C" }}>
+                  <i className="ti ti-x" style={{ fontSize: 20 }} aria-hidden="true" />
                 </button>
               </div>
               <Link href="/" onClick={() => setMobileOpen(false)} style={{
                 display: "flex", alignItems: "center", gap: 8, textDecoration: "none", marginBottom: 13,
               }}>
                 <span style={{
-                  width: 32, height: 32, borderRadius: 4, background: "#D4AF6A",
+                  width: 32, height: 32, borderRadius: 4, background: "#4EDB8E",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontWeight: 700, fontSize: 15, color: "#1a1204",
+                  fontWeight: 700, fontSize: 16, color: "#F0F7EE",
                   fontFamily: "'Playfair Display', serif",
                 }}>Z</span>
-                <span style={{ fontSize: 15, fontWeight: 700, color: "#D4AF6A", fontFamily: "'Playfair Display', serif" }}>Zonarena</span>
+                <span style={{ fontSize: 16, fontWeight: 700, color: "#4EDB8E", fontFamily: "'Playfair Display', serif" }}>Zonarena</span>
               </Link>
               <div style={{
-                background: "rgba(212,175,106,.04)",
-                border: "0.5px solid rgba(212,175,106,.14)",
+                background: "#1B221C",
+                border: "0.5px solid #2E3830",
                 borderRadius: 5, padding: "8px 11px", marginBottom: 11,
               }}>
-                <p style={{ fontSize: 12, color: "#F3E9D2", fontWeight: 600 }}>{user?.full_name}</p>
-                <p style={{ fontSize: 11, color: "#D4AF6A", marginTop: 2 }}>
+                <p style={{ fontSize: 13, color: "#F0F7EE", fontWeight: 600 }}>{user?.full_name}</p>
+                <p style={{ fontSize: 13, color: "#4EDB8E", marginTop: 2 }}>
                   {user?.coins} GDS · {user?.tickets} tickets
                 </p>
               </div>
@@ -989,9 +988,9 @@ export default function TournamentsProPage() {
                 {NAV.map(([href, lbl]) => (
                   <Link key={href} href={href} onClick={() => setMobileOpen(false)} style={{
                     display: "block", padding: "8px 11px", borderRadius: 4,
-                    fontSize: 13, textDecoration: "none",
-                    background: href === "/tournaments/pro" ? "rgba(212,175,106,.1)" : "transparent",
-                    color: href === "/tournaments/pro" ? "#D4AF6A" : "rgba(243,233,210,.48)",
+                    fontSize: 14, textDecoration: "none",
+                    background: href === "/tournaments/pro" ? "#1D2E22" : "transparent",
+                    color: href === "/tournaments/pro" ? "#4EDB8E" : "#C7D6C4",
                   }}>{lbl}</Link>
                 ))}
               </nav>
@@ -1004,18 +1003,18 @@ export default function TournamentsProPage() {
 
           {/* Hero */}
           <div style={{
-            background: "rgba(212,175,106,.025)",
-            border: "0.5px solid rgba(212,175,106,.16)",
+            background: "#1B221C",
+            border: "0.5px solid #2E3830",
             borderRadius: 6, padding: "18px 20px", marginBottom: 16,
           }}>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
               <div>
-                <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: ".14em", color: "#D4AF6A", marginBottom: 5, fontWeight: 700 }}>
+                <p style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".14em", color: "#4EDB8E", marginBottom: 5, fontWeight: 700 }}>
                   Table Pro · Compétition payante
                 </p>
-                <h1 style={{ fontSize: 22, fontWeight: 600, color: "#F3E9D2", marginBottom: 4, fontFamily: "'Playfair Display', serif" }}>Tournois Pro</h1>
-                <p style={{ fontSize: 13, color: "rgba(243,233,210,.55)", lineHeight: 1.6, maxWidth: 460 }}>
-                  50 GDS pour jouer · Gain de 220 à 440 GDS selon le nombre de joueurs · Une seule tentative par tournoi
+                <h1 style={{ fontSize: 24, fontWeight: 600, color: "#F0F7EE", marginBottom: 4, fontFamily: "'Playfair Display', serif" }}>Tournois Pro</h1>
+                <p style={{ fontSize: 14, color: "#C7D6C4", lineHeight: 1.6, maxWidth: 460 }}>
+                  50 GDS pour jouer · Gain de 220 à 440 GDS selon le nombre de joueurs
                 </p>
               </div>
 
@@ -1026,19 +1025,19 @@ export default function TournamentsProPage() {
                   aria-label="Notifications"
                   style={{
                     width: 36, height: 36, borderRadius: 4, cursor: "pointer",
-                    background: "rgba(212,175,106,.06)",
-                    border: "0.5px solid rgba(212,175,106,.2)",
+                    background: "#232B24",
+                    border: "0.5px solid #2E3830",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     position: "relative",
                   }}
                 >
-                  <i className="ti ti-bell" style={{ fontSize: 16, color: "rgba(243,233,210,.6)" }} aria-hidden="true" />
+                  <i className="ti ti-bell" style={{ fontSize: 17, color: "#C7D6C4" }} aria-hidden="true" />
                   {unread > 0 && (
                     <span style={{
                       position: "absolute", top: -4, right: -4,
                       width: 15, height: 15, borderRadius: "50%",
-                      background: "#C4432D", color: "#fff",
-                      fontSize: 9, fontWeight: 600,
+                      background: "#F0938F", color: "#fff",
+                      fontSize: 11, fontWeight: 600,
                       display: "flex", alignItems: "center", justifyContent: "center",
                     }}>
                       {unread > 9 ? "9+" : unread}
@@ -1054,17 +1053,17 @@ export default function TournamentsProPage() {
             {/* Stats header — commission retirée */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 8, marginTop: 14 }}>
               {[
-                { val: "50",      label: "GDS entrée",  c: "#D4AF6A" },
-                { val: "5–10",    label: "joueurs",      c: "#F3E9D2" },
-                { val: "220–440", label: "GDS 1er",      c: "#8FD9AF" },
+                { val: "50",      label: "GDS entrée",  c: "#4EDB8E" },
+                { val: "5–10",    label: "joueurs",      c: "#F0F7EE" },
+                { val: "220–440", label: "GDS 1er",      c: "#6EE8A8" },
               ].map(m => (
                 <div key={m.label} style={{
-                  background: "rgba(212,175,106,.04)",
-                  border: "0.5px solid rgba(212,175,106,.12)",
+                  background: "#232B24",
+                  border: "0.5px solid #2E3830",
                   borderRadius: 4, padding: "8px 10px", textAlign: "center",
                 }}>
-                  <p style={{ fontSize: 15, fontWeight: 600, color: m.c, fontFamily: "'Playfair Display', serif" }}>{m.val}</p>
-                  <p style={{ fontSize: 10, color: "rgba(243,233,210,.32)", marginTop: 1 }}>{m.label}</p>
+                  <p style={{ fontSize: 16, fontWeight: 600, color: m.c, fontFamily: "'Playfair Display', serif" }}>{m.val}</p>
+                  <p style={{ fontSize: 12, color: "#8FA089", marginTop: 1 }}>{m.label}</p>
                 </div>
               ))}
             </div>
@@ -1077,8 +1076,8 @@ export default function TournamentsProPage() {
           {active.length > 0 && (
             <div style={{ marginBottom: 26 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#6FBF8E", animation: "pulseDot 1.5s infinite" }} />
-                <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "rgba(243,233,210,.4)" }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#39D97A", animation: "pulseDot 1.5s infinite" }} />
+                <p style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "#8FA089" }}>
                   En cours — joue maintenant
                 </p>
               </div>
@@ -1095,8 +1094,8 @@ export default function TournamentsProPage() {
           {upcoming.length > 0 && (
             <div style={{ marginBottom: 26 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                <i className="ti ti-lock" style={{ fontSize: 11, color: "rgba(212,175,106,.4)" }} aria-hidden="true" />
-                <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "rgba(243,233,210,.4)" }}>
+                <i className="ti ti-lock" style={{ fontSize: 13, color: "#4EDB8E" }} aria-hidden="true" />
+                <p style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "#8FA089" }}>
                   À venir — ouverture automatique
                 </p>
               </div>
@@ -1113,8 +1112,8 @@ export default function TournamentsProPage() {
           {finished.length > 0 && (
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                <i className="ti ti-flag-check" style={{ fontSize: 11, color: "rgba(212,175,106,.3)" }} aria-hidden="true" />
-                <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "rgba(243,233,210,.35)" }}>
+                <i className="ti ti-flag-check" style={{ fontSize: 13, color: "#5E6E5C" }} aria-hidden="true" />
+                <p style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "#5E6E5C" }}>
                   Terminés
                 </p>
               </div>
@@ -1129,9 +1128,9 @@ export default function TournamentsProPage() {
 
           {tournaments.length === 0 && (
             <div style={{ textAlign: "center", padding: "70px 20px" }}>
-              <p style={{ fontSize: 38, marginBottom: 12 }}>🏆</p>
-              <p style={{ fontSize: 15, fontWeight: 600, color: "#F3E9D2", marginBottom: 5, fontFamily: "'Playfair Display', serif" }}>Aucun tournoi disponible</p>
-              <p style={{ fontSize: 12, color: "rgba(243,233,210,.32)" }}>
+              <p style={{ fontSize: 40, marginBottom: 12 }}>🏆</p>
+              <p style={{ fontSize: 16, fontWeight: 600, color: "#F0F7EE", marginBottom: 5, fontFamily: "'Playfair Display', serif" }}>Aucun tournoi disponible</p>
+              <p style={{ fontSize: 13, color: "#8FA089" }}>
                 Les tournois apparaîtront ici dès qu&apos;ils seront créés dans Supabase.
               </p>
             </div>

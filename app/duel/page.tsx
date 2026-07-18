@@ -32,23 +32,23 @@ export default function DuelPage() {
   const steps = [
     {
       number: "01",
-      title: "Tu lances le défi",
-      desc: "Clique sur le bouton, entre le nom de ton adversaire. Notification instantanée.",
+      title: "Lance le défi",
+      desc: "Choisis ton adversaire, ecris son nom et envoie-lui le duel.",
     },
     {
       number: "02",
-      title: "Il accepte",
-      desc: "Vous choisissez le thème ensemble: Drapeaux, memoire, tankarena.",
+      title: "Choisissez le jeu",
+      desc: "Drapeaux, Mémoire ou Tank Arena.",
     },
     {
       number: "03",
-      title: "Pari optionnel",
-      desc: "Misez des coins pour rendre le duel plus intense. Le gagnant empoche la mise.",
+      title: "Ajoutez une mise si vous voulez",
+      desc: "Le duel peut aussi être joué gratuitement.",
     },
     {
       number: "04",
-      title: "Le duel commence",
-      desc: "Chacun de son côté. Rapide, juste, et score comparé à la fin.",
+      title: "Jouez et comparez vos scores",
+      desc: "Le meilleur score remporte le duel.",
     },
   ];
 
@@ -92,7 +92,7 @@ export default function DuelPage() {
         }
 
         @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(18px); }
+          from { opacity: 0; transform: translateY(14px); }
           to { opacity: 1; transform: translateY(0); }
         }
 
@@ -173,26 +173,62 @@ export default function DuelPage() {
           opacity: .95;
         }
 
+        details summary {
+          list-style: none;
+        }
+
+        details summary::-webkit-details-marker {
+          display: none;
+        }
+
         @media (max-width: 768px) {
-          .duel-grid {
-            grid-template-columns: 1fr !important;
-          }
-
-          .duel-stats {
-            grid-template-columns: 1fr !important;
-          }
-
           .duel-card {
             border-radius: 22px !important;
           }
 
+          .duel-main {
+            padding: 14px 12px 34px !important;
+          }
+
+          .duel-inner {
+            padding: 18px !important;
+          }
+
+          .duel-title {
+            font-size: 58px !important;
+            margin-bottom: 8px !important;
+          }
+
+          .duel-stats {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+            margin-top: 16px !important;
+          }
+
+          .duel-stat {
+            padding: 12px 10px !important;
+          }
+
+          .duel-stat:last-child {
+            grid-column: 1 / -1;
+          }
+
+          .duel-cta-wrap {
+            margin-top: 18px !important;
+          }
+
+          .duel-explain {
+            margin-top: 14px !important;
+          }
+
           .duel-step {
-            padding: 12px !important;
+            padding: 11px !important;
           }
         }
       `}</style>
 
       <main
+        className="duel-main"
         style={{
           minHeight: "100vh",
           position: "relative",
@@ -236,14 +272,14 @@ export default function DuelPage() {
 
         <div
           style={{
-            maxWidth: 860,
+            maxWidth: 760,
             margin: "0 auto",
             position: "relative",
             zIndex: 2,
           }}
         >
           <div
-            className="duel-card"
+            className="duel-card duel-inner"
             style={{
               borderRadius: 28,
               padding: "clamp(18px, 4vw, 28px)",
@@ -255,14 +291,14 @@ export default function DuelPage() {
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 10,
-                  padding: "8px 14px",
+                  padding: "7px 12px",
                   borderRadius: 999,
                   border: "1px solid rgba(255,255,255,0.10)",
                   background: "rgba(255,255,255,0.04)",
                   color: "rgba(255,255,255,0.82)",
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: 700,
-                  letterSpacing: "0.16em",
+                  letterSpacing: "0.14em",
                   textTransform: "uppercase",
                   animation: "fadeUp .55s ease both",
                 }}
@@ -285,133 +321,193 @@ export default function DuelPage() {
                 )}
               </div>
 
-              <div
-                className="duel-grid"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1.15fr 0.85fr",
-                  gap: 28,
-                  alignItems: "start",
-                  marginTop: 24,
-                }}
-              >
-                <div>
-                  <div
+              <div>
+                <div
+                  className="duel-title"
+                  style={{
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    fontSize: "clamp(64px, 13vw, 104px)",
+                    lineHeight: 0.88,
+                    letterSpacing: "0.02em",
+                    marginTop: 20,
+                    marginBottom: 12,
+                    animation: "fadeUp .6s .05s ease both",
+                  }}
+                >
+                  DUEL
+                  <span
                     style={{
-                      fontFamily: "'Bebas Neue', sans-serif",
-                      fontSize: "clamp(56px, 14vw, 112px)",
-                      lineHeight: 0.88,
-                      letterSpacing: "0.02em",
-                      marginBottom: 14,
-                      animation: "fadeUp .6s .05s ease both",
+                      display: "block",
+                      color: "#ff7a1a",
+                      textShadow: "0 0 26px rgba(255,122,26,0.35)",
                     }}
                   >
-                    DUEL
-                    <span
+                    1 VS 1
+                  </span>
+                </div>
+
+                <p
+                  style={{
+                    maxWidth: 560,
+                    fontSize: "clamp(14px, 3.6vw, 17px)",
+                    lineHeight: 1.55,
+                    color: "rgba(255,255,255,0.68)",
+                    margin: 0,
+                    animation: "fadeUp .6s .12s ease both",
+                  }}
+                >
+                  Défie un ami, choisissez un jeu et comparez vos scores.
+                </p>
+
+                <div
+                  className="duel-stats"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                    gap: 12,
+                    marginTop: 22,
+                    animation: "fadeUp .6s .18s ease both",
+                  }}
+                >
+                  {[
+                    { val: "90 s", label: "pour accepter" },
+                    { val: "50", label: "GDS minimum avec mise" },
+                    { val: "0", label: "GDS pour jouer gratuitement" },
+                  ].map((item) => (
+                    <div
+                      key={item.label}
+                      className="duel-stat"
                       style={{
-                        display: "block",
-                        color: "#ff7a1a",
-                        textShadow: "0 0 26px rgba(255,122,26,0.35)",
+                        borderRadius: 16,
+                        padding: "14px 12px",
+                        background: "rgba(255,255,255,0.04)",
+                        border: "1px solid rgba(255,255,255,0.08)",
                       }}
                     >
-                      1 VS 1
-                    </span>
-                  </div>
-
-                  <p
-                    style={{
-                      maxWidth: 560,
-                      fontSize: "clamp(14px, 3.6vw, 17px)",
-                      lineHeight: 1.7,
-                      color: "rgba(255,255,255,0.68)",
-                      margin: 0,
-                      animation: "fadeUp .6s .12s ease both",
-                    }}
-                  >
-                    Défie un ami en quelques secondes. Choisissez le thème, ajoutez un pari si vous voulez,
-                    puis jouez.
-                  </p>
-
-                  <div
-                    className="duel-stats"
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-                      gap: 12,
-                      marginTop: 26,
-                      animation: "fadeUp .6s .18s ease both",
-                    }}
-                  >
-                    {[
-                      { val: "90seconde", label: "pour choisir" },
-                      { val: "50", label: "coins minimum pour les paries" },
-                      { val: "0", label: "Ou jouer sans pariez" },
-                    ].map((s) => (
                       <div
-                        key={s.val}
                         style={{
-                          borderRadius: 18,
-                          padding: "16px 14px",
-                          background: "rgba(255,255,255,0.04)",
-                          border: "1px solid rgba(255,255,255,0.08)",
+                          fontFamily: "'Bebas Neue', sans-serif",
+                          fontSize: 34,
+                          lineHeight: 1,
+                          color: "#ff7a1a",
+                          marginBottom: 5,
                         }}
                       >
-                        <div
-                          style={{
-                            fontFamily: "'Bebas Neue', sans-serif",
-                            fontSize: 38,
-                            lineHeight: 1,
-                            color: "#ff7a1a",
-                            marginBottom: 6,
-                          }}
-                        >
-                          {s.val}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 12,
-                            lineHeight: 1.45,
-                            color: "rgba(255,255,255,0.6)",
-                          }}
-                        >
-                          {s.label}
-                        </div>
+                        {item.val}
                       </div>
-                    ))}
-                  </div>
+                      <div
+                        style={{
+                          fontSize: 11.5,
+                          lineHeight: 1.4,
+                          color: "rgba(255,255,255,0.6)",
+                        }}
+                      >
+                        {item.label}
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
                 <div
+                  className="duel-cta-wrap"
                   style={{
-                    borderRadius: 24,
-                    padding: 18,
-                    background: "rgba(255,255,255,0.03)",
-                    border: "1px solid rgba(255,255,255,0.08)",
+                    marginTop: 22,
+                    animation: "fadeUp .6s .24s ease both",
                   }}
                 >
-                  <div
+                  <button
+                    ref={btnRef}
+                    onClick={handleRipple}
+                    className="duel-cta"
                     style={{
-                      fontSize: 12,
-                      fontWeight: 800,
-                      letterSpacing: "0.18em",
-                      color: "rgba(255,255,255,0.5)",
-                      textTransform: "uppercase",
-                      marginBottom: 16,
+                      width: "100%",
+                      position: "relative",
+                      overflow: "hidden",
+                      cursor: "pointer",
+                      border: "none",
+                      borderRadius: 18,
+                      background: "linear-gradient(135deg, #ffffff 0%, #f3f3f3 100%)",
+                      padding: 0,
+                      boxShadow: "0 16px 40px rgba(255,122,26,0.18)",
+                      transition: "transform 0.18s ease, box-shadow 0.18s ease",
                     }}
                   >
-                    Comment ça marche
-                  </div>
+                    <div className="duel-cta-border" />
+                    <div
+                      style={{
+                        position: "relative",
+                        zIndex: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 12,
+                        padding: "18px 20px",
+                        fontFamily: "'Bebas Neue', sans-serif",
+                        fontSize: "clamp(22px, 5vw, 26px)",
+                        letterSpacing: "0.08em",
+                        color: "#0b0b0f",
+                      }}
+                    >
+                      <span>LANCER UN DUEL</span>
+                      <span style={{ fontSize: 22 }}>→</span>
+                    </div>
+                  </button>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <p
+                    style={{
+                      textAlign: "center",
+                      marginTop: 10,
+                      fontSize: 12.5,
+                      color: "rgba(255,255,255,0.46)",
+                    }}
+                  >
+                    Gratuit sans mise · 50 GDS minimum avec mise
+                  </p>
+                </div>
+
+                <details
+                  className="duel-explain"
+                  style={{
+                    marginTop: 18,
+                    borderRadius: 18,
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    overflow: "hidden",
+                  }}
+                >
+                  <summary
+                    style={{
+                      cursor: "pointer",
+                      padding: "14px 16px",
+                      fontSize: 13,
+                      fontWeight: 800,
+                      color: "rgba(255,255,255,0.78)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <span>Comment ça marche ?</span>
+                    <span style={{ color: "#ff7a1a" }}>＋</span>
+                  </summary>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 10,
+                      padding: "0 14px 14px",
+                    }}
+                  >
                     {steps.map((step) => (
                       <div
                         key={step.number}
                         className="duel-step"
                         style={{
                           display: "flex",
-                          gap: 14,
-                          padding: 14,
-                          borderRadius: 18,
+                          gap: 12,
+                          padding: 12,
+                          borderRadius: 16,
                           border: "1px solid rgba(255,255,255,0.06)",
                           background: "rgba(255,255,255,0.025)",
                           transition: "all 0.2s ease",
@@ -419,9 +515,9 @@ export default function DuelPage() {
                       >
                         <div
                           style={{
-                            width: 42,
-                            height: 42,
-                            borderRadius: 14,
+                            width: 38,
+                            height: 38,
+                            borderRadius: 12,
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -429,7 +525,7 @@ export default function DuelPage() {
                             background: "rgba(255,122,26,0.12)",
                             border: "1px solid rgba(255,122,26,0.22)",
                             color: "#ffb27b",
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: 800,
                             letterSpacing: "0.08em",
                           }}
@@ -440,10 +536,10 @@ export default function DuelPage() {
                         <div>
                           <div
                             style={{
-                              fontSize: 15,
+                              fontSize: 14,
                               fontWeight: 700,
                               color: "#fff",
-                              marginBottom: 4,
+                              marginBottom: 3,
                             }}
                           >
                             {step.title}
@@ -451,8 +547,8 @@ export default function DuelPage() {
                           <p
                             style={{
                               margin: 0,
-                              fontSize: 13.5,
-                              lineHeight: 1.55,
+                              fontSize: 12.5,
+                              lineHeight: 1.5,
                               color: "rgba(255,255,255,0.62)",
                             }}
                           >
@@ -462,63 +558,7 @@ export default function DuelPage() {
                       </div>
                     ))}
                   </div>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  marginTop: 26,
-                  animation: "fadeUp .6s .24s ease both",
-                }}
-              >
-                <button
-                  ref={btnRef}
-                  onClick={handleRipple}
-                  className="duel-cta"
-                  style={{
-                    width: "100%",
-                    position: "relative",
-                    overflow: "hidden",
-                    cursor: "pointer",
-                    border: "none",
-                    borderRadius: 18,
-                    background: "linear-gradient(135deg, #ffffff 0%, #f3f3f3 100%)",
-                    padding: 0,
-                    boxShadow: "0 16px 40px rgba(255,122,26,0.18)",
-                    transition: "transform 0.18s ease, box-shadow 0.18s ease",
-                  }}
-                >
-                  <div className="duel-cta-border" />
-                  <div
-                    style={{
-                      position: "relative",
-                      zIndex: 1,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 12,
-                      padding: "20px 22px",
-                      fontFamily: "'Bebas Neue', sans-serif",
-                      fontSize: "clamp(22px, 5vw, 26px)",
-                      letterSpacing: "0.08em",
-                      color: "#0b0b0f",
-                    }}
-                  >
-                    <span>LANCER UN DUEL</span>
-                    <span style={{ fontSize: 22 }}>→</span>
-                  </div>
-                </button>
-
-                <p
-                  style={{
-                    textAlign: "center",
-                    marginTop: 12,
-                    fontSize: 13,
-                    color: "rgba(255,255,255,0.42)",
-                  }}
-                >
-                  Sans pari, c’est gratuit. Aucun coin requis.
-                </p>
+                </details>
               </div>
             </div>
           </div>

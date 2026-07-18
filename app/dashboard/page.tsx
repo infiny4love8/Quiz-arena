@@ -1,35 +1,87 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 
 type UserData = {
   full_name: string;
   coins: number;
   tickets: number;
-  level?: number;
-  ranking?: number;
-  cashback?: number;
   xp?: number;
 };
 
+// Colonnes réellement affichées sur cette page — on ne demande plus
+// toutes les colonnes de la table (moncash_number, whatsapp_number,
+// age... n'ont rien à faire dans le navigateur ici).
+const DASHBOARD_USER_COLUMNS = "full_name, coins, tickets, xp";
+
 function WelcomeModal({ onClose }: { onClose: () => void }) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Focus initial dans la modale + fermeture au clavier (Échap) +
+  // piège de focus basique (Tab reste à l'intérieur de la modale)
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+
+      if (e.key === "Tab" && dialogRef.current) {
+        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4">
-      <div className="relative w-full max-w-md rounded-[20px] border border-yellow-400/35 bg-[#0a0a0f] p-6">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
+      onClick={onClose}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="welcome-modal-title"
+        className="relative w-full max-w-md rounded-[20px] border border-yellow-400/35 bg-[#0a0a0f] p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
         <button
+          ref={closeButtonRef}
           onClick={onClose}
+          aria-label="Fermer la fenêtre de bienvenue"
           className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-400 transition hover:text-white"
         >
-          ✕
+          <span aria-hidden="true">✕</span>
         </button>
 
         <div className="mb-5 text-center">
-          <div className="mb-2 inline-block animate-bounce text-4xl">🎁</div>
+          <div className="mb-2 inline-block animate-bounce text-4xl" aria-hidden="true">🎁</div>
 
-          <h2 className="text-xl font-bold text-yellow-400">
+          <h2 id="welcome-modal-title" className="text-xl font-bold text-yellow-400">
             Bienvenue sur Zonarena
           </h2>
 
@@ -37,59 +89,59 @@ function WelcomeModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="mb-4 rounded-xl border border-yellow-400/20 bg-yellow-400/10 px-4 py-3">
-  <p className="text-sm leading-relaxed text-white">
-    🎉 Bienvenue !
-    <br />
-    Nous t&apos;offrons{" "}
-    <span className="font-semibold text-yellow-400">
-      5 tickets sponsorisés
-    </span>{" "}
-    pour participer à tes premiers tournois sponsorisés et tenter de gagner
-    de l&apos;argent.
-  </p>
-</div>
+          <p className="text-sm leading-relaxed text-white">
+            <span aria-hidden="true">🎉</span> Bienvenue !
+            <br />
+            Nous t&apos;offrons{" "}
+            <span className="font-semibold text-yellow-400">
+              5 tickets sponsorisés
+            </span>{" "}
+            pour participer à tes premiers tournois sponsorisés et tenter de gagner
+            de l&apos;argent.
+          </p>
+        </div>
 
-<div className="mb-5 flex flex-col gap-3">
-  {[
-    [
-      "🎫",
-      "Les tickets sponsorisés permettent de participer  aux tournois sponsorisés et de tenter de gagner de l'argent.",
-    ],
-    [
-      "💰",
-      "Les Gourdes servent à rejoindre les tournois Pro. Les récompenses gagnées peuvent être retirées via MonCash.",
-    ],
-    [
-      "⭐",
-      "Chaque tournoi Pro terminé te fait gagner de l’XP et augmente ton niveau.",
-    ],
-    [
-      "💳",
-      "Besoin de plus de Gourdes ou de tickets sponsorisés ? Tu peux en obtenir à tout moment depuis la page Acheter.",
-    ],
-  ].map(([icon, text]) => (
-    <div key={text} className="flex items-start gap-3">
-      <span className="text-lg">{icon}</span>
+        <div className="mb-5 flex flex-col gap-3">
+          {[
+            [
+              "🎫",
+              "Les tickets sponsorisés permettent de participer  aux tournois sponsorisés et de tenter de gagner de l'argent.",
+            ],
+            [
+              "💰",
+              "Les Gourdes servent à rejoindre les tournois Pro. Les récompenses gagnées peuvent être retirées via MonCash.",
+            ],
+            [
+              "⭐",
+              "Chaque tournoi Pro terminé te fait gagner de l’XP et augmente ton niveau.",
+            ],
+            [
+              "💳",
+              "Besoin de plus de Gourdes ou de tickets sponsorisés ? Tu peux en obtenir à tout moment depuis la page Acheter.",
+            ],
+          ].map(([icon, text]) => (
+            <div key={text} className="flex items-start gap-3">
+              <span className="text-lg" aria-hidden="true">{icon}</span>
 
-      <p className="text-sm leading-relaxed text-zinc-400">{text}</p>
-    </div>
-  ))}
-</div>
+              <p className="text-sm leading-relaxed text-zinc-400">{text}</p>
+            </div>
+          ))}
+        </div>
 
-<div className="mb-4 border-t border-white/10 pt-4 text-center">
-  <p className="text-xs leading-relaxed text-zinc-600">
-    🏆 Plus tu joues, plus tu progresses.
-    <br />
-    💰 Plus tu progresses, plus tu peux gagner.
-  </p>
-</div>
+        <div className="mb-4 border-t border-white/10 pt-4 text-center">
+          <p className="text-xs leading-relaxed text-zinc-600">
+            <span aria-hidden="true">🏆</span> Plus tu joues, plus tu progresses.
+            <br />
+            <span aria-hidden="true">💰</span> Plus tu progresses, plus tu peux gagner.
+          </p>
+        </div>
 
-<button
-  onClick={onClose}
-  className="w-full rounded-xl bg-yellow-400 py-3 text-sm font-bold text-black transition hover:bg-yellow-300"
->
-  Découvrir mon Dashboard 🎮
-</button>
+        <button
+          onClick={onClose}
+          className="w-full rounded-xl bg-yellow-400 py-3 text-sm font-bold text-black transition hover:bg-yellow-300"
+        >
+          Découvrir mon Dashboard <span aria-hidden="true">🎮</span>
+        </button>
       </div>
     </div>
   );
@@ -119,9 +171,12 @@ export default function DashboardPage() {
         return;
       }
 
+      // Ne demande que les colonnes affichées sur cette page — voir
+      // DASHBOARD_USER_COLUMNS. Toute nouvelle colonne sensible ajoutée
+      // à la table users plus tard ne sera pas exposée ici par défaut.
       const { data, error } = await supabase
         .from("users")
-        .select("*")
+        .select(DASHBOARD_USER_COLUMNS)
         .eq("id", session.user.id)
         .single();
 
@@ -195,6 +250,8 @@ export default function DashboardPage() {
     }
   };
 
+  // Redirection forcée en cas de duel en attente — laissée telle quelle
+  // (comportement/UX à revoir plus tard si besoin, pas touché ici).
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
 
@@ -309,9 +366,10 @@ export default function DashboardPage() {
             <div className="mb-4 flex justify-end">
               <button
                 onClick={() => setMobileMenuOpen(false)}
+                aria-label="Fermer le menu"
                 className="p-2 text-zinc-400"
               >
-                ✕
+                <span aria-hidden="true">✕</span>
               </button>
             </div>
 
@@ -387,7 +445,7 @@ export default function DashboardPage() {
                 href="/support"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Support
+                Aide
               </MobileNavLink>
             </nav>
 
@@ -469,7 +527,8 @@ export default function DashboardPage() {
 
           <h1 className="mt-2 text-2xl font-medium text-white sm:text-3xl">
             Hello,{" "}
-            <span className="text-yellow-400">{userData.full_name}</span> 👋
+            <span className="text-yellow-400">{userData.full_name}</span>{" "}
+            <span aria-hidden="true">👋</span>
           </h1>
 
           <p className="mt-2 max-w-2xl text-sm text-[#8a8a92]">
@@ -486,7 +545,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Link href="/tournaments/pro" className="block">
               <div className="flex h-full items-center gap-3 rounded-2xl border border-yellow-400/35 bg-yellow-400/10 px-4 py-4 transition hover:-translate-y-0.5 hover:bg-yellow-400/20">
-                <span className="text-2xl">🏆</span>
+                <span className="text-2xl" aria-hidden="true">🏆</span>
 
                 <div>
                   <p className="text-sm font-bold text-yellow-400">
@@ -502,7 +561,7 @@ export default function DashboardPage() {
 
             <Link href="/tournamentsponsorise" className="block">
               <div className="flex h-full items-center gap-3 rounded-2xl border border-[#232326] bg-[#0c0c0e] px-4 py-4 transition hover:-translate-y-0.5 hover:border-yellow-400/40">
-                <span className="text-2xl">🎫</span>
+                <span className="text-2xl" aria-hidden="true">🎫</span>
 
                 <div>
                   <p className="text-sm font-bold text-white">
@@ -519,7 +578,7 @@ export default function DashboardPage() {
 
             <Link href="/training" className="block">
               <div className="flex h-full items-center gap-3 rounded-2xl border border-[#232326] bg-[#0c0c0e] px-4 py-4 transition hover:-translate-y-0.5 hover:border-yellow-400/40">
-                <span className="text-2xl">🎯</span>
+                <span className="text-2xl" aria-hidden="true">🎯</span>
 
                 <div>
                   <p className="text-sm font-bold text-white">
@@ -590,7 +649,7 @@ export default function DashboardPage() {
           <Link href="/tournamentsponsorise">
             <div className="rounded-3xl border border-yellow-400/25 bg-gradient-to-r from-yellow-400/10 via-[#161615] to-[#0c0c0e] p-5 transition hover:-translate-y-0.5 hover:border-yellow-400/45">
               <div className="flex items-center gap-3">
-                <span className="text-3xl">💰</span>
+                <span className="text-3xl" aria-hidden="true">💰</span>
 
                 <div>
                   <h3 className="font-medium text-yellow-400">
@@ -603,7 +662,7 @@ export default function DashboardPage() {
                   </p>
                 </div>
 
-                <span className="ml-auto text-yellow-400">→</span>
+                <span className="ml-auto text-yellow-400" aria-hidden="true">→</span>
               </div>
             </div>
           </Link>
@@ -664,7 +723,7 @@ function DesktopNavLink({
 }: {
   href: string;
   active?: boolean;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <Link
@@ -689,7 +748,7 @@ function MobileNavLink({
   href: string;
   active?: boolean;
   onClick: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <Link
@@ -729,7 +788,7 @@ function CollectorCard({
         </span>
       )}
 
-      <div className="text-[15px] text-yellow-400">{icon}</div>
+      <div className="text-[15px] text-yellow-400" aria-hidden="true">{icon}</div>
 
       <p className="mt-2 text-[10px] text-[#8a8a92]">{title}</p>
 
@@ -763,7 +822,7 @@ function QuickButton({
       href={href}
       className="w-20 flex-shrink-0 rounded-xl border border-[#232326] bg-[#0c0c0e] p-3 text-center transition hover:-translate-y-0.5 hover:border-yellow-400/40 lg:w-auto"
     >
-      <div className="mb-1 text-2xl">{icon}</div>
+      <div className="mb-1 text-2xl" aria-hidden="true">{icon}</div>
 
       <div className="text-[11px] font-medium text-[#8a8a92]">{label}</div>
     </Link>

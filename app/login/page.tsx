@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
@@ -9,6 +9,22 @@ import type { FormEvent } from "react";
 const inputCls =
   "w-full rounded-xl bg-[#09090b] border border-white/10 px-4 py-3 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-yellow-400/50 transition";
 
+// ─────────────────────────────────────────────────────────────
+// Throttling côté client (best effort)
+//
+// N'empêche pas un script qui appellerait supabase.auth directement
+// (la clé anon est de toute façon publique), mais freine un
+// utilisateur/bot qui martèle le formulaire visible. La vraie limite
+// de dernier recours reste celle de Supabase côté projet.
+// ─────────────────────────────────────────────────────────────
+const MAX_ATTEMPTS_BEFORE_LOCKOUT = 5;
+const LOCKOUT_MS = 60 * 1000; // 1 minute
+
+// Message générique unique pour tout échec d'identifiants —
+// on ne laisse plus fuiter le message brut de Supabase, qui peut
+// indiquer si un email existe déjà (ex: "Email not confirmed").
+const GENERIC_LOGIN_ERROR = "Email ou mot de passe incorrect.";
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,23 +32,43 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const router = useRouter();
 
+  const failedAttempts = useRef(0);
+  const lockedUntil = useRef<number | null>(null);
+
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setLoading(true);
     setError("");
 
-    try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (lockedUntil.current && Date.now() < lockedUntil.current) {
+      const secondsLeft = Math.ceil((lockedUntil.current - Date.now()) / 1000);
+      setError(`Trop de tentatives. Réessaie dans ${secondsLeft} secondes.`);
+      return;
+    }
 
-      if (error) {
-        setError(error.message);
+    setLoading(true);
+
+    try {
+      const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (authError) {
+        failedAttempts.current += 1;
+
+        if (failedAttempts.current >= MAX_ATTEMPTS_BEFORE_LOCKOUT) {
+          lockedUntil.current = Date.now() + LOCKOUT_MS;
+          failedAttempts.current = 0;
+          setError("Trop de tentatives. Réessaie dans une minute.");
+        } else {
+          setError(GENERIC_LOGIN_ERROR);
+        }
+
         setLoading(false);
         return;
       }
 
+      failedAttempts.current = 0;
       router.push("/dashboard");
     } catch {
-      setError("Erreur de connexion");
+      setError("Erreur de connexion. Réessaie.");
       setLoading(false);
     }
   }
@@ -45,6 +81,9 @@ export default function LoginPage() {
           100% { stroke-dashoffset: -1600; }
         }
         .border-light { animation: borderRun 3s linear infinite; }
+        @media (prefers-reduced-motion: reduce) {
+          .border-light { animation: none !important; }
+        }
       `}</style>
 
       <main className="min-h-screen bg-[#09090b] text-white">
@@ -107,7 +146,7 @@ export default function LoginPage() {
               </p>
 
               {error && (
-                <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                <div role="alert" className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
                   {error}
                 </div>
               )}
@@ -122,6 +161,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="jean@exemple.com"
+                    autoComplete="email"
                     required
                     className={inputCls}
                   />
@@ -136,6 +176,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
+                    autoComplete="current-password"
                     required
                     className={inputCls}
                   />
