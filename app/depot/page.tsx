@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { ChangeEvent } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 const COINS_OPTIONS = [
@@ -40,7 +41,7 @@ export default function DepotPage() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>, type: Tab) => {
+  const handleFile = (e: ChangeEvent<HTMLInputElement>, type: Tab) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
@@ -168,6 +169,8 @@ export default function DepotPage() {
 
   const resetAll = () => {
     setDone(false);
+    setDoneMessage("");
+    setError(null);
     setSelectedCoins(null);
     setSelectedTickets(null);
     setScreenshotCoins(null);
@@ -175,7 +178,6 @@ export default function DepotPage() {
     setPreviewCoins(null);
     setPreviewTickets(null);
     setCustomCoins("");
-    setCustomTickets("");
   };
 
   const screenshot = isCoins ? screenshotCoins : screenshotTickets;
