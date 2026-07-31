@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
 
 type UserData = {
   full_name: string;
@@ -13,17 +12,12 @@ type UserData = {
   xp?: number;
 };
 
-// Colonnes réellement affichées sur cette page — on ne demande plus
-// toutes les colonnes de la table (moncash_number, whatsapp_number,
-// age... n'ont rien à faire dans le navigateur ici).
 const DASHBOARD_USER_COLUMNS = "full_name, coins, tickets, xp";
 
 function WelcomeModal({ onClose }: { onClose: () => void }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
-  // Focus initial dans la modale + fermeture au clavier (Échap) +
-  // piège de focus basique (Tab reste à l'intérieur de la modale)
   useEffect(() => {
     closeButtonRef.current?.focus();
 
@@ -37,6 +31,7 @@ function WelcomeModal({ onClose }: { onClose: () => void }) {
         const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
         );
+
         if (focusable.length === 0) return;
 
         const first = focusable[0];
@@ -58,7 +53,7 @@ function WelcomeModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
@@ -66,81 +61,68 @@ function WelcomeModal({ onClose }: { onClose: () => void }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="welcome-modal-title"
-        className="relative w-full max-w-md rounded-[20px] border border-yellow-400/35 bg-[#0a0a0f] p-6"
+        className="relative w-full max-w-md rounded-[26px] border border-yellow-400/25 bg-[#0b0b0d] p-6 shadow-[0_30px_90px_rgba(0,0,0,.65)]"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           ref={closeButtonRef}
+          type="button"
           onClick={onClose}
           aria-label="Fermer la fenêtre de bienvenue"
-          className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-400 transition hover:text-white"
+          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-zinc-400 transition hover:text-white"
         >
-          <span aria-hidden="true">✕</span>
+          ✕
         </button>
 
         <div className="mb-5 text-center">
-          <div className="mb-2 inline-block animate-bounce text-4xl" aria-hidden="true">🎁</div>
+          <div className="mb-3 text-4xl" aria-hidden="true">
+            🎁
+          </div>
 
-          <h2 id="welcome-modal-title" className="text-xl font-bold text-yellow-400">
+          <h2
+            id="welcome-modal-title"
+            className="text-2xl font-black text-yellow-400"
+          >
             Bienvenue sur Zonarena
           </h2>
 
-          <div className="mx-auto mt-2 h-0.5 w-10 rounded bg-yellow-400 opacity-50" />
-        </div>
-
-        <div className="mb-4 rounded-xl border border-yellow-400/20 bg-yellow-400/10 px-4 py-3">
-          <p className="text-sm leading-relaxed text-white">
-            <span aria-hidden="true">🎉</span> Bienvenue !
-            <br />
-            Nous t&apos;offrons{" "}
-            <span className="font-semibold text-yellow-400">
-              5 tickets sponsorisés
-            </span>{" "}
-            pour participer à tes premiers tournois sponsorisés et tenter de gagner
-            de l&apos;argent.
+          <p className="mt-2 text-sm leading-6 text-zinc-400">
+            Ton espace de jeu, de progression et de récompenses.
           </p>
         </div>
 
-        <div className="mb-5 flex flex-col gap-3">
+        <div className="mb-4 rounded-2xl border border-yellow-400/20 bg-yellow-400/10 px-4 py-4">
+          <p className="text-sm leading-6 text-white">
+            Nous t&apos;offrons{" "}
+            <span className="font-bold text-yellow-400">
+              5 tickets sponsorisés
+            </span>{" "}
+            pour participer à tes premiers tournois.
+          </p>
+        </div>
+
+        <div className="mb-6 space-y-3">
           {[
-            [
-              "🎫",
-              "Les tickets sponsorisés permettent de participer  aux tournois sponsorisés et de tenter de gagner de l'argent.",
-            ],
-            [
-              "💰",
-              "Les Gourdes servent à rejoindre les tournois Pro. Les récompenses gagnées peuvent être retirées via MonCash.",
-            ],
-            [
-              "⭐",
-              "Chaque tournoi Pro terminé te fait gagner de l’XP et augmente ton niveau.",
-            ],
-            [
-              "💳",
-              "Besoin de plus de Gourdes ou de tickets sponsorisés ? Tu peux en obtenir à tout moment depuis la page Acheter.",
-            ],
+            ["🎫", "Utilise tes tickets pour les tournois sponsorisés."],
+            ["💰", "Les Gourdes servent aux tournois Pro et aux retraits."],
+            ["⭐", "Joue pour gagner de l’XP et augmenter ton niveau."],
+            ["🎁", "Complète des missions pour obtenir plus de récompenses."],
           ].map(([icon, text]) => (
             <div key={text} className="flex items-start gap-3">
-              <span className="text-lg" aria-hidden="true">{icon}</span>
-
-              <p className="text-sm leading-relaxed text-zinc-400">{text}</p>
+              <span className="mt-0.5 text-lg" aria-hidden="true">
+                {icon}
+              </span>
+              <p className="text-sm leading-6 text-zinc-400">{text}</p>
             </div>
           ))}
         </div>
 
-        <div className="mb-4 border-t border-white/10 pt-4 text-center">
-          <p className="text-xs leading-relaxed text-zinc-600">
-            <span aria-hidden="true">🏆</span> Plus tu joues, plus tu progresses.
-            <br />
-            <span aria-hidden="true">💰</span> Plus tu progresses, plus tu peux gagner.
-          </p>
-        </div>
-
         <button
+          type="button"
           onClick={onClose}
-          className="w-full rounded-xl bg-yellow-400 py-3 text-sm font-bold text-black transition hover:bg-yellow-300"
+          className="w-full rounded-2xl bg-yellow-400 py-3.5 text-sm font-black text-black transition hover:bg-yellow-300 active:scale-[.99]"
         >
-          Découvrir mon Dashboard <span aria-hidden="true">🎮</span>
+          Découvrir mon dashboard
         </button>
       </div>
     </div>
@@ -150,11 +132,7 @@ function WelcomeModal({ onClose }: { onClose: () => void }) {
 export default function DashboardPage() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
-
-  // True au départ pour éviter un flash incorrect avant lecture du localStorage.
-  const [hasOpenedMenu, setHasOpenedMenu] = useState(true);
 
   const router = useRouter();
 
@@ -171,9 +149,6 @@ export default function DashboardPage() {
         return;
       }
 
-      // Ne demande que les colonnes affichées sur cette page — voir
-      // DASHBOARD_USER_COLUMNS. Toute nouvelle colonne sensible ajoutée
-      // à la table users plus tard ne sera pas exposée ici par défaut.
       const { data, error } = await supabase
         .from("users")
         .select(DASHBOARD_USER_COLUMNS)
@@ -193,9 +168,6 @@ export default function DashboardPage() {
         setShowWelcomeModal(true);
       }
 
-      const menuKey = `zonarena_menu_opened_${session.user.id}`;
-
-      setHasOpenedMenu(!!localStorage.getItem(menuKey));
       setLoading(false);
     }
 
@@ -231,27 +203,6 @@ export default function DashboardPage() {
     setShowWelcomeModal(false);
   };
 
-  const handleOpenMobileMenu = async () => {
-    setMobileMenuOpen((current) => !current);
-
-    if (!hasOpenedMenu) {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (session?.user) {
-        localStorage.setItem(
-          `zonarena_menu_opened_${session.user.id}`,
-          "true"
-        );
-      }
-
-      setHasOpenedMenu(true);
-    }
-  };
-
-  // Redirection forcée en cas de duel en attente — laissée telle quelle
-  // (comportement/UX à revoir plus tard si besoin, pas touché ici).
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
 
@@ -287,7 +238,7 @@ export default function DashboardPage() {
       <main className="flex min-h-screen items-center justify-center bg-[#050506] text-white">
         <div className="text-center">
           <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-yellow-400 border-t-transparent" />
-          <p className="text-zinc-400">Chargement...</p>
+          <p className="text-sm text-zinc-400">Chargement...</p>
         </div>
       </main>
     );
@@ -304,396 +255,208 @@ export default function DashboardPage() {
     )
   );
 
+  const firstName =
+    userData.full_name?.trim().split(/\s+/)[0] || "Joueur";
+
   return (
-    <main className="min-h-screen bg-[#050506] text-white">
+    <main className="min-h-screen overflow-x-hidden bg-[#050506] text-white">
       {showWelcomeModal && <WelcomeModal onClose={handleCloseWelcome} />}
 
-      <div className="pointer-events-none fixed inset-0">
-        <div className="absolute right-[-160px] top-[-160px] h-[380px] w-[380px] rounded-full bg-yellow-400/10 blur-3xl" />
-
-        <div className="absolute bottom-[-180px] left-[-120px] h-[420px] w-[420px] rounded-full bg-yellow-500/5 blur-3xl" />
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute right-[-130px] top-[-150px] h-[360px] w-[360px] rounded-full bg-yellow-400/[0.08] blur-3xl" />
+        <div className="absolute bottom-[-180px] left-[-150px] h-[420px] w-[420px] rounded-full bg-yellow-500/[0.04] blur-3xl" />
       </div>
 
-      {/* Burger mobile */}
-      <div className="fixed left-4 top-4 z-50 lg:hidden">
-        <button
-          onClick={handleOpenMobileMenu}
-          aria-label="Ouvrir le menu"
-          className="relative rounded-xl border border-yellow-400/30 bg-[#0c0c0e]/90 p-2 backdrop-blur-xl"
-        >
-          {!hasOpenedMenu && (
-            <>
-              <span className="absolute -right-1 -top-1 h-3 w-3 animate-pulse rounded-full bg-yellow-400 ring-2 ring-[#050506]" />
+      <section className="relative z-10 mx-auto w-full max-w-6xl px-4 pb-10 pt-5 sm:px-6 lg:px-8">
+        <header className="mb-5 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-yellow-400 text-lg font-black text-black shadow-[0_10px_30px_rgba(250,204,21,.18)]">
+              Z
+            </span>
+            <div>
+              <p className="text-base font-black text-yellow-400">Zonarena</p>
+              <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-600">
+                Play. Win. Repeat.
+              </p>
+            </div>
+          </Link>
 
-              <span className="absolute -right-2 -top-2 h-5 w-5 animate-ping rounded-full bg-yellow-400/25" />
-            </>
-          )}
-
-          <svg
-            className="h-6 w-6 text-yellow-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+          <button
+            type="button"
+            onClick={async () => {
+              await supabase.auth.signOut();
+              router.replace("/login");
+            }}
+            aria-label="Se déconnecter"
+            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-zinc-400 transition hover:border-red-400/30 hover:text-red-400 active:scale-95"
           >
-            {mobileMenuOpen ? (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            ) : (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            )}
-          </svg>
-        </button>
-      </div>
+            <svg
+              width="19"
+              height="19"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M10 17l5-5-5-5" />
+              <path d="M15 12H3" />
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+            </svg>
+          </button>
+        </header>
 
-      {/* Menu mobile */}
-      {mobileMenuOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/70 lg:hidden"
-            onClick={() => setMobileMenuOpen(false)}
+        <div className="mb-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-600">
+            Ton espace
+          </p>
+          <h1 className="mt-1 text-[28px] font-black leading-tight sm:text-4xl">
+            Bonjour, <span className="text-yellow-400">{firstName}</span> 👋
+          </h1>
+          <p className="mt-1 text-sm text-zinc-500">
+            Prêt à jouer et décrocher ta prochaine victoire ?
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <StatCard
+            title="Gourdes"
+            value={userData.coins ?? 0}
+            icon="💰"
+            className="col-span-2 sm:col-span-1"
           />
 
-          <aside className="fixed left-0 top-0 z-50 flex h-screen w-72 flex-col border-r border-[#3a3220] bg-[#0c0c0e] p-5 lg:hidden">
-            <div className="mb-4 flex justify-end">
-              <button
-                onClick={() => setMobileMenuOpen(false)}
-                aria-label="Fermer le menu"
-                className="p-2 text-zinc-400"
-              >
-                <span aria-hidden="true">✕</span>
-              </button>
-            </div>
+          <StatCard
+            title="Tickets"
+            value={userData.tickets ?? 0}
+            icon="🎫"
+          />
 
-            <SidebarLogo />
-
-            <div className="mt-6 rounded-2xl border border-[#232326] bg-black/30 p-4">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-[#8a8a92]">
-                Connecté
-              </p>
-
-              <p className="mt-2 text-sm font-semibold text-white">
-                {userData.full_name}
-              </p>
-
-              <p className="mt-1 text-xs text-yellow-400">
-                {userData.coins ?? 0} Gourdes · {userData.tickets ?? 0} tickets
-                sponsorisés
-              </p>
-            </div>
-
-            <nav className="mt-6 flex-1 space-y-2 overflow-y-auto pb-6">
-              <MobileNavLink
-                href="/dashboard"
-                active
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Dashboard
-              </MobileNavLink>
-
-              <MobileNavLink
-                href="/tournaments/pro"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Tournois Pro
-              </MobileNavLink>
-
-              <MobileNavLink
-                href="/tournamentsponsorise"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Tournois sponsorisés
-              </MobileNavLink>
-
-              <MobileNavLink
-                href="/duel"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Duel 1 VS 1
-              </MobileNavLink>
-
-              <MobileNavLink
-                href="/training"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Entraînement
-              </MobileNavLink>
-
-              <MobileNavLink
-                href="/withdraw"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Retrait
-              </MobileNavLink>
-
-              <MobileNavLink
-                href="/depot"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Acheter
-              </MobileNavLink>
-
-              <MobileNavLink
-                href="/support"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Aide
-              </MobileNavLink>
-            </nav>
-
-            <div className="border-t border-[#232326] pt-4">
-              <button
-                onClick={async () => {
-                  await supabase.auth.signOut();
-                  router.replace("/login");
-                }}
-                className="w-full rounded-2xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm font-bold text-red-400"
-              >
-                Déconnexion
-              </button>
-            </div>
-          </aside>
-        </>
-      )}
-
-      {/* Menu desktop */}
-      <aside className="fixed left-0 top-0 hidden h-screen w-72 flex-col border-r border-[#3a3220] bg-[#0c0c0e] p-5 lg:flex">
-        <SidebarLogo />
-
-        <div className="mt-6 rounded-2xl border border-[#232326] bg-black/30 p-4">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-[#8a8a92]">
-            Connecté
-          </p>
-
-          <p className="mt-2 text-sm font-semibold text-white">
-            {userData.full_name}
-          </p>
-
-          <p className="mt-1 text-xs text-yellow-400">
-            {userData.coins ?? 0} Gourdes · {userData.tickets ?? 0} tickets
-          </p>
+          <StatCard
+            title="Niveau"
+            value={levelInfo.level}
+            icon="⭐"
+            sub={levelInfo.name}
+            progress={progress}
+          />
         </div>
 
-        <nav className="mt-8 flex-1 space-y-2">
-          <DesktopNavLink href="/dashboard" active>
-            Dashboard
-          </DesktopNavLink>
-
-          <DesktopNavLink href="/tournaments/pro">
-            Tournois Pro
-          </DesktopNavLink>
-
-          <DesktopNavLink href="/tournamentsponsorise">
-            Tournois sponsorisés
-          </DesktopNavLink>
-
-          <DesktopNavLink href="/duel">Duel 1v1</DesktopNavLink>
-
-          <DesktopNavLink href="/training">Entraînement</DesktopNavLink>
-
-          <DesktopNavLink href="/withdraw">Retrait</DesktopNavLink>
-
-          <DesktopNavLink href="/depot">Acheter</DesktopNavLink>
-
-          <DesktopNavLink href="/support">Support</DesktopNavLink>
-        </nav>
-
-        <button
-          onClick={async () => {
-            await supabase.auth.signOut();
-            router.replace("/login");
-          }}
-          className="rounded-2xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm font-bold text-red-400 transition hover:bg-red-500/10"
+        <Link
+          href="/tournamentsponsorise"
+          className="group mt-4 flex items-center gap-4 rounded-[24px] border border-yellow-400/20 bg-gradient-to-r from-yellow-400/[0.12] via-[#111112] to-[#0c0c0e] p-4 transition hover:border-yellow-400/40 active:scale-[.995]"
         >
-          Déconnexion
-        </button>
-      </aside>
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-yellow-400 text-2xl text-black shadow-[0_10px_30px_rgba(250,204,21,.18)]">
+            🏆
+          </div>
 
-      {/* Contenu */}
-      <section className="relative z-10 p-4 pb-24 pt-6 sm:p-6 lg:ml-72">
-        {/* Bienvenue */}
-        <div className="rounded-3xl border border-[#232326] bg-[#0c0c0e] p-5 sm:p-6">
-          <p className="text-[10px] uppercase tracking-[0.25em] text-yellow-400">
-            Bienvenue sur ton espace
-          </p>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-yellow-400/70">
+              Tournois sponsorisés
+            </p>
+            <h2 className="mt-0.5 text-sm font-black text-white sm:text-base">
+              Utilise un ticket et tente de gagner
+            </h2>
+            <p className="mt-1 text-xs text-zinc-500">
+              Consulte les tournois disponibles aujourd&apos;hui.
+            </p>
+          </div>
 
-          <h1 className="mt-2 text-2xl font-medium text-white sm:text-3xl">
-            Hello,{" "}
-            <span className="text-yellow-400">{userData.full_name}</span>{" "}
-            <span aria-hidden="true">👋</span>
-          </h1>
+          <span className="text-xl text-yellow-400 transition group-hover:translate-x-1">
+            →
+          </span>
+        </Link>
 
-          <p className="mt-2 max-w-2xl text-sm text-[#8a8a92]">
-            Joue, gagne des Gourdes, progresse et retire tes récompenses.
-          </p>
-        </div>
-
-        {/* Actions principales */}
-        <div className="mt-4">
-          <p className="mb-3 text-[10px] uppercase tracking-[0.25em] text-[#8a8a92]">
-            Que veux-tu faire aujourd&apos;hui ?
-          </p>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Link href="/tournaments/pro" className="block">
-              <div className="flex h-full items-center gap-3 rounded-2xl border border-yellow-400/35 bg-yellow-400/10 px-4 py-4 transition hover:-translate-y-0.5 hover:bg-yellow-400/20">
-                <span className="text-2xl" aria-hidden="true">🏆</span>
-
-                <div>
-                  <p className="text-sm font-bold text-yellow-400">
-                    Jouer un Tournoi Pro
-                  </p>
-
-                  <p className="mt-1 text-xs text-zinc-500">
-                    Utilise des Gourdes et tente de gagner jusqu&apos;à 440 GDS.
-                  </p>
-                </div>
-              </div>
-            </Link>
-
-            <Link href="/tournamentsponsorise" className="block">
-              <div className="flex h-full items-center gap-3 rounded-2xl border border-[#232326] bg-[#0c0c0e] px-4 py-4 transition hover:-translate-y-0.5 hover:border-yellow-400/40">
-                <span className="text-2xl" aria-hidden="true">🎫</span>
-
-                <div>
-                  <p className="text-sm font-bold text-white">
-                    Tournoi sponsorisé
-                  </p>
-
-                  <p className="mt-1 text-xs text-zinc-500">
-                    Utilise 1 ticket sponsorisé et joue pour gagner de
-                    l&apos;argent.
-                  </p>
-                </div>
-              </div>
-            </Link>
-
-            <Link href="/training" className="block">
-              <div className="flex h-full items-center gap-3 rounded-2xl border border-[#232326] bg-[#0c0c0e] px-4 py-4 transition hover:-translate-y-0.5 hover:border-yellow-400/40">
-                <span className="text-2xl" aria-hidden="true">🎯</span>
-
-                <div>
-                  <p className="text-sm font-bold text-white">
-                    S&apos;entraîner
-                  </p>
-
-                  <p className="mt-1 text-xs text-zinc-500">
-                    Améliore tes scores avant d&apos;entrer en compétition.
-                  </p>
-                </div>
-              </div>
-            </Link>
+        <div className="mt-6 flex items-end justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-600">
+              Navigation
+            </p>
+            <h2 className="mt-1 text-xl font-black">Que veux-tu faire ?</h2>
           </div>
         </div>
 
-        {/* Cartes statistiques */}
-        <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-3">
-          <CollectorCard
-            title="Gourdes"
-            value={userData.coins ?? 0}
-            icon="🪙"
-            badge="SOLDE"
-            sub="Utilisables et retirables"
-          />
-
-          <CollectorCard
-            title="Tickets sponsorisés"
-            value={userData.tickets ?? 0}
-            icon="🎫"
-            badge="ACCÈS"
-            sub="Pour jouer aux tournois gratuits"
-          />
-
-          <CollectorCard
-            title="Niveau"
-            value={`${levelInfo.name} ${levelInfo.stars}`}
-            icon="⭐"
-            badge={`LV.${levelInfo.level}`}
-            progress={progress}
-            sub={`${xp} / ${levelInfo.next} XP`}
-          />
-
-          <CollectorCard
-            title="Classement"
-            value="Bientôt disponible"
-            icon="🏆"
-            badge="SOON"
-          />
-
-          <CollectorCard
-            title="Cashback"
-            value="5 à 10 GDS"
-            icon="💵"
-            sub="Crédités après un tournoi Pro sans victoire"
-          />
-
-          <CollectorCard
-            title="Objectif"
-            value="Jouer en Pro"
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <ActionCard
+            href="/training"
             icon="🎯"
-            badge="GO"
-            sub="Gagne de l’XP à chaque participation"
+            title="Entraînement"
+            description="Améliore tes scores"
+          />
+
+          <ActionCard
+            href="/duel"
+            icon="⚔️"
+            title="Duel 1v1"
+            description="Défie un joueur"
+          />
+
+          <ActionCard
+            href="/tournaments/pro"
+            icon="🏆"
+            title="Tournoi Pro"
+            description="Joue avec tes Gourdes"
+            featured
+          />
+
+          <ActionCard
+            href="/tournamentsponsorise"
+            icon="🎫"
+            title="Sponsorisé"
+            description="Joue avec tes tickets"
+          />
+
+          <ActionCard
+            href="/missions"
+            icon="🎁"
+            title="Missions"
+            description="Gagne des récompenses"
+            badge="Nouveau"
+          />
+
+          <ActionCard
+            href="/depot"
+            icon="💳"
+            title="Dépôt"
+            description="Ajoute des fonds"
+          />
+
+          <ActionCard
+            href="/withdraw"
+            icon="💸"
+            title="Retrait"
+            description="Retire tes gains"
+          />
+
+          <ActionCard
+            href="/support"
+            icon="💬"
+            title="Support"
+            description="Besoin d’aide ?"
           />
         </div>
 
-        {/* Bannière sponsorisée */}
-        <div className="mt-8">
-          <Link href="/tournamentsponsorise">
-            <div className="rounded-3xl border border-yellow-400/25 bg-gradient-to-r from-yellow-400/10 via-[#161615] to-[#0c0c0e] p-5 transition hover:-translate-y-0.5 hover:border-yellow-400/45">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl" aria-hidden="true">💰</span>
-
-                <div>
-                  <h3 className="font-medium text-yellow-400">
-                    Gagne de l&apos;argent avec ton ticket
-                  </h3>
-
-                  <p className="mt-1 text-xs text-[#8a8a92]">
-                    Utilise 1 ticket sponsorisé, joue et tente de remporter des
-                    Gourdes.
-                  </p>
-                </div>
-
-                <span className="ml-auto text-yellow-400" aria-hidden="true">→</span>
-              </div>
+        <div className="mt-5 rounded-[22px] border border-white/[0.07] bg-white/[0.025] p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold text-zinc-400">
+                Progression du niveau
+              </p>
+              <p className="mt-1 text-sm font-black text-white">
+                {xp} XP sur {levelInfo.next} XP
+              </p>
             </div>
-          </Link>
-        </div>
 
-        {/* Actions rapides */}
-        <div className="mt-8">
-          <h3 className="mb-3 text-[10px] uppercase tracking-[0.25em] text-[#8a8a92]">
-            Actions rapides
-          </h3>
+            <span className="rounded-full border border-yellow-400/20 bg-yellow-400/10 px-3 py-1.5 text-xs font-black text-yellow-400">
+              {Math.round(progress)}%
+            </span>
+          </div>
 
-          <div className="flex gap-3 overflow-x-auto pb-2 lg:grid lg:grid-cols-6 lg:overflow-visible">
-            <QuickButton
-              href="/tournaments/pro"
-              icon="🏆"
-              label="Pro"
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.06]">
+            <div
+              className="h-full rounded-full bg-yellow-400 transition-all duration-700"
+              style={{ width: `${progress}%` }}
             />
-
-            <QuickButton
-              href="/tournamentsponsorise"
-              icon="🎫"
-              label="Sponsorisé"
-            />
-
-            <QuickButton href="/duel" icon="⚔️" label="Duel" />
-
-            <QuickButton href="/depot" icon="🪙" label="Acheter" />
-
-            <QuickButton href="/withdraw" icon="💸" label="Retrait" />
-
-            <QuickButton href="/support" icon="💬" label="Support" />
           </div>
         </div>
       </section>
@@ -701,105 +464,45 @@ export default function DashboardPage() {
   );
 }
 
-function SidebarLogo() {
-  return (
-    <Link
-      href="/"
-      className="flex items-center gap-2 text-xl font-black text-yellow-400"
-    >
-      <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-yellow-400 text-black">
-        Z
-      </span>
-
-      Zonarena
-    </Link>
-  );
-}
-
-function DesktopNavLink({
-  href,
-  active,
-  children,
-}: {
-  href: string;
-  active?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`block rounded-2xl px-4 py-3 text-sm transition ${
-        active
-          ? "bg-yellow-400 font-bold text-black"
-          : "text-zinc-300 hover:bg-white/5 hover:text-yellow-400"
-      }`}
-    >
-      {children}
-    </Link>
-  );
-}
-
-function MobileNavLink({
-  href,
-  active,
-  onClick,
-  children,
-}: {
-  href: string;
-  active?: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      onClick={onClick}
-      className={`block rounded-2xl px-4 py-3 text-sm transition ${
-        active
-          ? "bg-yellow-400 font-bold text-black"
-          : "text-zinc-300 hover:bg-white/5 hover:text-yellow-400"
-      }`}
-    >
-      {children}
-    </Link>
-  );
-}
-
-function CollectorCard({
+function StatCard({
   title,
   value,
   icon,
-  badge,
   sub,
   progress,
+  className = "",
 }: {
   title: string;
   value: string | number;
   icon: string;
-  badge?: string;
   sub?: string;
   progress?: number;
+  className?: string;
 }) {
   return (
-    <div className="group relative overflow-hidden rounded-[10px] border border-[#3a3220] bg-gradient-to-b from-[#161615] to-[#0f0f0e] p-3 transition hover:-translate-y-0.5 hover:border-yellow-400/50">
-      {badge && (
-        <span className="absolute right-0 top-0 rounded-bl-lg bg-yellow-400 px-2 py-0.5 text-[8px] font-medium text-[#1a1400]">
-          {badge}
-        </span>
-      )}
+    <div
+      className={`relative overflow-hidden rounded-[24px] border border-white/[0.07] bg-[#0d0d0f] p-4 shadow-[0_18px_45px_rgba(0,0,0,.22)] ${className}`}
+    >
+      <div className="absolute right-[-18px] top-[-18px] h-20 w-20 rounded-full bg-yellow-400/[0.05] blur-2xl" />
 
-      <div className="text-[15px] text-yellow-400" aria-hidden="true">{icon}</div>
+      <div className="relative flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-600">
+            {title}
+          </p>
+          <p className="mt-2 text-3xl font-black text-white">{value}</p>
+          {sub && <p className="mt-1 text-xs text-yellow-400">{sub}</p>}
+        </div>
 
-      <p className="mt-2 text-[10px] text-[#8a8a92]">{title}</p>
-
-      <p className="mt-1 text-[17px] font-medium text-yellow-400">{value}</p>
-
-      {sub && <p className="mt-1 text-[10px] text-[#8a8a92]">{sub}</p>}
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-yellow-400/15 bg-yellow-400/[0.08] text-xl">
+          {icon}
+        </div>
+      </div>
 
       {typeof progress === "number" && (
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#232320]">
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
           <div
-            className="h-full rounded-full bg-yellow-400 transition-all duration-700"
+            className="h-full rounded-full bg-yellow-400"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -808,23 +511,53 @@ function CollectorCard({
   );
 }
 
-function QuickButton({
+function ActionCard({
   href,
   icon,
-  label,
+  title,
+  description,
+  featured = false,
+  badge,
 }: {
   href: string;
   icon: string;
-  label: string;
+  title: string;
+  description: string;
+  featured?: boolean;
+  badge?: string;
 }) {
   return (
     <Link
       href={href}
-      className="w-20 flex-shrink-0 rounded-xl border border-[#232326] bg-[#0c0c0e] p-3 text-center transition hover:-translate-y-0.5 hover:border-yellow-400/40 lg:w-auto"
+      className={`group relative min-h-[132px] overflow-hidden rounded-[22px] border p-4 transition duration-200 hover:-translate-y-1 active:scale-[.98] ${
+        featured
+          ? "border-yellow-400/30 bg-gradient-to-br from-yellow-400/[0.13] to-[#0c0c0e]"
+          : "border-white/[0.07] bg-[#0d0d0f] hover:border-yellow-400/25"
+      }`}
     >
-      <div className="mb-1 text-2xl" aria-hidden="true">{icon}</div>
+      {badge && (
+        <span className="absolute right-3 top-3 rounded-full bg-yellow-400 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-black">
+          {badge}
+        </span>
+      )}
 
-      <div className="text-[11px] font-medium text-[#8a8a92]">{label}</div>
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.035] text-2xl transition group-hover:scale-105">
+        {icon}
+      </div>
+
+      <h3
+        className={`mt-3 text-sm font-black ${
+          featured ? "text-yellow-400" : "text-white"
+        }`}
+      >
+        {title}
+      </h3>
+
+      <p className="mt-1 text-[11px] leading-4 text-zinc-500">{description}</p>
+
+      <span className="absolute bottom-3 right-3 text-sm text-yellow-400/70 transition group-hover:translate-x-0.5">
+        →
+      </span>
     </Link>
   );
 }
