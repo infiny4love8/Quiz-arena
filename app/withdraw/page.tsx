@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 type FormType = {
@@ -10,93 +11,99 @@ type FormType = {
 };
 
 export default function WithdrawPage() {
+  const router = useRouter();
   const [coins, setCoins] = useState<number>(0);
   const [loadingCoins, setLoadingCoins] = useState(true);
-
   const [form, setForm] = useState<FormType>({
     fullName: "",
     moncashNumber: "",
     amount: "",
   });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
-  const [error, setError] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(false);
-  const [success, setSuccess] = useState<boolean>(false);
-
-  const sanitizeName = (value: string) => {
-    return value
-      .replace(/[<>/{}[\]$`"'\\]/g, "")
+  const sanitizeName = (value: string) =>
+    value
+      .normalize("NFKC")
+      .replace(/[<>/{}[\]$`"\\]/g, "")
       .replace(/\s+/g, " ")
       .slice(0, 60);
-  };
 
-  const sanitizePhone = (value: string) => {
-    return value.replace(/[^\d+]/g, "").slice(0, 15);
-  };
+  const sanitizePhone = (value: string) =>
+    value.replace(/[^\d+]/g, "").slice(0, 15);
 
-  const sanitizeAmount = (value: string) => {
-    return value.replace(/[^\d]/g, "").slice(0, 7);
-  };
+  const sanitizeAmount = (value: string) =>
+    value.replace(/[^\d]/g, "").slice(0, 7);
 
   useEffect(() => {
+    let active = true;
+
     const fetchCoins = async () => {
       try {
         const {
-          data: { session },
-        } = await supabase.auth.getSession();
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser();
 
-        if (!session) {
-          setLoadingCoins(false);
+        if (authError || !user) {
+          router.replace("/login");
           return;
         }
 
-        const { data } = await supabase
+        const { data, error: userError } = await supabase
           .from("users")
           .select("coins")
-          .eq("id", session.user.id)
+          .eq("id", user.id)
           .single();
 
-        setCoins(Number(data?.coins) || 0);
-      } catch (err) {
-        console.error("Error fetching coins:", err);
-        setCoins(0);
+        if (userError) throw userError;
+        if (active) setCoins(Number(data?.coins) || 0);
+      } catch (fetchError) {
+        console.error("Error fetching coins:", fetchError);
+        if (active) setCoins(0);
       } finally {
-        setLoadingCoins(false);
+        if (active) setLoadingCoins(false);
       }
     };
 
     fetchCoins();
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (loading) return;
 
     const amount = Number(form.amount);
     const fullName = sanitizeName(form.fullName).trim();
     const moncashNumber = sanitizePhone(form.moncashNumber).trim();
 
     if (!fullName || !moncashNumber || !form.amount) {
-      return setError("Tous les champs sont obligatoires");
+      setError("Tous les champs sont obligatoires");
+      return;
     }
-
     if (fullName.length < 3) {
-      return setError("Nom complet invalide");
+      setError("Nom complet invalide");
+      return;
     }
-
-    if (moncashNumber.length < 8) {
-      return setError("Numéro MonCash invalide");
+    if (moncashNumber.replace(/\D/g, "").length < 8) {
+      setError("Numéro MonCash invalide");
+      return;
     }
-
-    if (!amount || isNaN(amount)) {
-      return setError("Montant invalide");
+    if (!Number.isSafeInteger(amount) || amount <= 0) {
+      setError("Montant invalide");
+      return;
     }
-
     if (amount < 250) {
-      return setError("Minimum retrait = 250 GDS");
+      setError("Minimum retrait = 250 GDS");
+      return;
     }
-
     if (amount > coins) {
-      return setError("Solde insuffisant");
+      setError("Solde insuffisant");
+      return;
     }
 
     setError("");
@@ -106,42 +113,23 @@ export default function WithdrawPage() {
     try {
       const res = await fetch("/api/withdraw", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          fullName,
-          moncashNumber,
-          amount,
-        }),
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        cache: "no-store",
+        body: JSON.stringify({ fullName, moncashNumber, amount }),
       });
 
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        setError(data.error || "Erreur lors de la demande");
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        setError(data?.error || "Erreur lors de la demande");
         return;
       }
 
       setSuccess(true);
       setForm({ fullName: "", moncashNumber: "", amount: "" });
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (session) {
-        const { data: refreshed } = await supabase
-          .from("users")
-          .select("coins")
-          .eq("id", session.user.id)
-          .single();
-
-        setCoins(Number(refreshed?.coins) || 0);
-      }
-    } catch (err) {
-      console.error(err);
+      setCoins(Number(data.newBalance) || 0);
+    } catch (submitError) {
+      console.error(submitError);
       setError("Erreur serveur");
     } finally {
       setLoading(false);
@@ -149,9 +137,18 @@ export default function WithdrawPage() {
   };
 
   return (
-    <main className="min-h-screen bg-black text-white flex items-center justify-center px-5 py-10">
-      <div className="w-full max-w-xl rounded-3xl border border-pink-400/20 bg-zinc-950 p-8 shadow-2xl relative overflow-hidden">
-        <div className="absolute -top-24 -right-24 h-48 w-48 rounded-full bg-pink-500/10 blur-3xl" />
+    <main className="relative flex min-h-screen items-center justify-center bg-black px-5 py-10 text-white">
+      <button
+        type="button"
+        onClick={() => router.replace("/dashboard")}
+        aria-label="Retourner au dashboard"
+        className="fixed left-4 top-4 z-20 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-zinc-950/90 text-xl text-zinc-300 shadow-lg backdrop-blur transition hover:border-pink-400/40 hover:text-pink-400 active:scale-95"
+      >
+        ←
+      </button>
+
+      <div className="relative w-full max-w-xl overflow-hidden rounded-3xl border border-pink-400/20 bg-zinc-950 p-6 shadow-2xl sm:p-8">
+        <div className="absolute -right-24 -top-24 h-48 w-48 rounded-full bg-pink-500/10 blur-3xl" />
         <div className="absolute -bottom-24 -left-24 h-48 w-48 rounded-full bg-pink-400/10 blur-3xl" />
 
         <div className="relative">
@@ -174,31 +171,23 @@ export default function WithdrawPage() {
 
           <div className="mt-5 rounded-2xl border border-yellow-400/20 bg-yellow-400/10 p-4 text-sm text-yellow-200">
             ⏳ Les demandes de retrait sont généralement traitées dans un délai de{" "}
-            <span className="font-black text-yellow-400">10 à 20 minutes</span>. Merci de patienter.
+            <span className="font-black text-yellow-400">10 à 20 minutes</span>.
+            Merci de patienter.
           </div>
 
           {error && (
-            <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+            <div role="alert" className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
               {error}
             </div>
           )}
 
           {success && (
-            <div className="mt-4 animate-pulse rounded-2xl border border-green-500/30 bg-green-500/10 p-5 text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-400 text-2xl text-black">
-                ✅
-              </div>
-              <h2 className="text-lg font-black text-green-400">
-                Félicitations !
-              </h2>
+            <div role="status" className="mt-4 rounded-2xl border border-green-500/30 bg-green-500/10 p-5 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-400 text-2xl text-black">✅</div>
+              <h2 className="text-lg font-black text-green-400">Félicitations !</h2>
               <p className="mt-2 text-sm leading-relaxed text-green-200">
-                Votre demande de retrait a été envoyée avec succès.
-                Elle sera traitée dans environ{" "}
+                Votre demande de retrait a été envoyée avec succès. Elle sera traitée dans environ{" "}
                 <span className="font-black">10 à 20 minutes</span>.
-              </p>
-              <p className="mt-3 text-xs font-bold text-zinc-400">
-                Merci de patienter et à bientôt sur{" "}
-                <span className="text-pink-400">ZonArena</span>.
               </p>
             </div>
           )}
@@ -206,48 +195,48 @@ export default function WithdrawPage() {
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <input
               type="text"
+              name="fullName"
               placeholder="Nom complet"
               value={form.fullName}
+              minLength={3}
               maxLength={60}
+              required
               autoComplete="name"
-              onChange={(e) =>
-                setForm({ ...form, fullName: sanitizeName(e.target.value) })
-              }
+              onChange={(e) => setForm({ ...form, fullName: sanitizeName(e.target.value) })}
               className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none transition focus:border-pink-400"
             />
 
             <input
               type="tel"
+              name="moncashNumber"
               placeholder="Numéro MonCash"
               value={form.moncashNumber}
+              minLength={8}
               maxLength={15}
+              required
               inputMode="tel"
               autoComplete="tel"
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  moncashNumber: sanitizePhone(e.target.value),
-                })
-              }
+              onChange={(e) => setForm({ ...form, moncashNumber: sanitizePhone(e.target.value) })}
               className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none transition focus:border-pink-400"
             />
 
             <input
               type="text"
+              name="amount"
               placeholder="Montant (min 250)"
               value={form.amount}
               maxLength={7}
+              required
               inputMode="numeric"
-              onChange={(e) =>
-                setForm({ ...form, amount: sanitizeAmount(e.target.value) })
-              }
+              autoComplete="off"
+              onChange={(e) => setForm({ ...form, amount: sanitizeAmount(e.target.value) })}
               className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none transition focus:border-pink-400"
             />
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full rounded-xl bg-pink-500 py-3 font-black text-black transition hover:bg-pink-400 disabled:opacity-50"
+              disabled={loading || loadingCoins}
+              className="w-full rounded-xl bg-pink-500 py-3 font-black text-black transition hover:bg-pink-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? "Envoi..." : "Demander retrait"}
             </button>

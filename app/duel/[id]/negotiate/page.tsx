@@ -69,14 +69,28 @@ export default function DuelNegotiatePage() {
   );
 
   useEffect(() => {
+    let cancelled = false;
+    let localChannel: ReturnType<typeof supabase.channel> | null = null;
+
     const init = async () => {
+      // En développement, React peut exécuter l'effet deux fois.
+      // On supprime donc toujours l'ancien channel avant d'en créer un nouveau.
+      if (channelRef.current) {
+        await supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
+
+      if (cancelled) return;
+
       if (!user) {
-        router.push("/login");
+        router.replace("/login");
         return;
       }
+
       setMyId(user.id);
 
       const { data: userData } = await supabase
@@ -84,7 +98,12 @@ export default function DuelNegotiatePage() {
         .select("coins")
         .eq("id", user.id)
         .single();
-      if (userData) setMyCoins(userData.coins);
+
+      if (cancelled) return;
+
+      if (userData) {
+        setMyCoins(Number(userData.coins) || 0);
+      }
 
       const { data: duelData, error } = await supabase
         .from("duels")
@@ -92,23 +111,25 @@ export default function DuelNegotiatePage() {
         .eq("id", duelId)
         .single();
 
+      if (cancelled) return;
+
       if (error || !duelData) {
-        router.push("/dashboard");
+        router.replace("/dashboard");
         return;
       }
 
       if (duelData.status === "pending") {
-        router.push(`/duel/${duelId}/respond`);
+        router.replace(`/duel/${duelId}/respond`);
         return;
       }
 
       if (duelData.status === "playing") {
-        router.push(`/duel/${duelId}/play`);
+        router.replace(`/duel/${duelId}/play`);
         return;
       }
 
       if (!["negotiating", "ready"].includes(duelData.status)) {
-        router.push("/dashboard");
+        router.replace("/dashboard");
         return;
       }
 
@@ -117,48 +138,71 @@ export default function DuelNegotiatePage() {
       }
 
       setDuel(duelData);
-      const myRole = duelData.player_a === user.id ? "a" : "b";
+
+      const myRole: Role =
+        duelData.player_a === user.id ? "a" : "b";
+
       setRole(myRole);
 
-      const opponentId = myRole === "a" ? duelData.player_b : duelData.player_a;
+      const opponentId =
+        myRole === "a" ? duelData.player_b : duelData.player_a;
+
       const { data: opp } = await supabase
         .from("users")
         .select("full_name")
         .eq("id", opponentId)
         .single();
-      if (opp) setOpponentName(opp.full_name);
+
+      if (cancelled) return;
+
+      if (opp?.full_name) {
+        setOpponentName(opp.full_name);
+      }
 
       const expiresAt = duelData.theme_expires_at;
+
       if (expiresAt) {
-        // Thème déjà proposé → timer basé sur l'expiration réelle
         setTimeLeft(calcTimeLeft(expiresAt));
         startTimer(expiresAt);
       } else {
-        // Pas encore de proposition → on démarre un timer local de 90s
-        // qui sera remplacé dès qu'un thème est proposé
-        const localExpiry = new Date(Date.now() + 90 * 1000).toISOString();
+        const localExpiry = new Date(
+          Date.now() + 90 * 1000
+        ).toISOString();
+
         startTimer(localExpiry);
         setTimeLeft(90);
       }
 
       setLoading(false);
 
-      channelRef.current = supabase
-        .channel(`negotiate-${duelId}`)
+      if (cancelled) return;
+
+      // Nom unique : évite qu'un ancien channel déjà abonné soit réutilisé.
+      const channelName = `negotiate-${duelId}-${user.id}-${Date.now()}`;
+
+      localChannel = supabase
+        .channel(channelName)
         .on(
           "postgres_changes",
-          { event: "UPDATE", schema: "public", table: "duels", filter: `id=eq.${duelId}` },
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "duels",
+            filter: `id=eq.${duelId}`,
+          },
           (payload) => {
+            if (cancelled) return;
+
             const updated = payload.new as DuelData;
             setDuel(updated);
 
             if (updated.status === "cancelled") {
-              router.push("/dashboard");
+              router.replace("/dashboard");
               return;
             }
 
             if (updated.status === "playing") {
-              router.push(`/duel/${duelId}/play`);
+              router.replace(`/duel/${duelId}/play`);
               return;
             }
 
@@ -169,19 +213,45 @@ export default function DuelNegotiatePage() {
             }
 
             if (updated.theme_expires_at) {
-              setTimeLeft(calcTimeLeft(updated.theme_expires_at));
+              setTimeLeft(
+                calcTimeLeft(updated.theme_expires_at)
+              );
               startTimer(updated.theme_expires_at);
             }
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          if (status === "CHANNEL_ERROR") {
+            console.error(
+              "Erreur de connexion Realtime pour le duel",
+              duelId
+            );
+          }
+        });
+
+      channelRef.current = localChannel;
     };
 
-    init();
+    void init();
 
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (channelRef.current) supabase.removeChannel(channelRef.current);
+      cancelled = true;
+
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+
+      const channelToRemove =
+        localChannel ?? channelRef.current;
+
+      if (channelToRemove) {
+        void supabase.removeChannel(channelToRemove);
+      }
+
+      if (channelRef.current === channelToRemove) {
+        channelRef.current = null;
+      }
     };
   }, [duelId, router, calcTimeLeft, startTimer]);
 

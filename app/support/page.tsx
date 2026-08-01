@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function SupportPage() {
+  const router = useRouter();
+
   const [form, setForm] = useState({
     fullName: "",
     whatsappNumber: "",
@@ -15,7 +18,12 @@ export default function SupportPage() {
   const [success, setSuccess] = useState(false);
 
   const validate = () => {
-    if (!form.fullName || !form.whatsappNumber || !form.issueType || !form.message) {
+    if (
+      !form.fullName ||
+      !form.whatsappNumber ||
+      !form.issueType ||
+      !form.message
+    ) {
       return "Tous les champs sont obligatoires";
     }
 
@@ -71,7 +79,16 @@ ${form.message}`;
   return (
     <main className="min-h-screen bg-black text-white flex items-center justify-center px-5">
       <div className="w-full max-w-2xl rounded-3xl border border-yellow-400/20 bg-zinc-950 p-8 shadow-2xl">
-        
+        {/* Bouton Retour */}
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="mb-6 flex items-center gap-2 text-zinc-400 hover:text-yellow-400 transition"
+        >
+          <span className="text-xl">←</span>
+          <span>Retour</span>
+        </button>
+
         <h1 className="text-3xl font-black">
           Support <span className="text-yellow-400">Zonarena</span>
         </h1>
@@ -96,7 +113,9 @@ ${form.message}`;
           <input
             placeholder="Nom complet"
             value={form.fullName}
-            onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, fullName: e.target.value })
+            }
             className="w-full rounded-2xl bg-black border border-zinc-800 px-4 py-4"
           />
 

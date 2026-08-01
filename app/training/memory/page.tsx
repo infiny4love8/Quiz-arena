@@ -84,8 +84,8 @@ const EMOJIS: EmojiItem[] = [
 ];
 
 const LEVEL_CONFIG = {
-  normal: { label: "Normal", rounds: 10, sequenceSize: 5, memorizeSeconds: 2.5, answerSeconds: 6, target: 70, wrongPenalty: 0 },
-  hard:   { label: "Difficile", rounds: 10, sequenceSize: 6, memorizeSeconds: 2.5, answerSeconds: 5, target: 90, wrongPenalty: -3 },
+  normal: { label: "Normal", rounds: 10, sequenceSize: 5, memorizeSeconds: 6, answerSeconds: 6, target: 70, wrongPenalty: 0 },
+  hard:   { label: "Difficile", rounds: 10, sequenceSize: 6, memorizeSeconds: 3, answerSeconds: 5, target: 90, wrongPenalty: -3 },
 };
 
 function shuffleArray<T>(array: T[]): T[] {

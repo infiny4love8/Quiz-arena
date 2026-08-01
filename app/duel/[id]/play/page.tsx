@@ -155,7 +155,7 @@ export default function DuelPlayPage() {
         setPhase("waiting");
         // Souscrire pour recevoir le "finished" quand l'adversaire termine
         channelRef.current = supabase
-          .channel(`play-${duelId}`)
+          .channel(`play-${duelId}-${user.id}-${Date.now()}`)
           .on("postgres_changes",
             { event: "UPDATE", schema: "public", table: "duels", filter: `id=eq.${duelId}` },
             (payload) => {
@@ -191,7 +191,7 @@ export default function DuelPlayPage() {
         setPhase("waiting");
         // Souscrire pour recevoir le "finished" quand l'adversaire termine
         channelRef.current = supabase
-          .channel(`play-${duelId}`)
+          .channel(`play-${duelId}-${user.id}-${Date.now()}`)
           .on("postgres_changes",
             { event: "UPDATE", schema: "public", table: "duels", filter: `id=eq.${duelId}` },
             (payload) => {
@@ -221,7 +221,7 @@ export default function DuelPlayPage() {
       if (oppScore !== null) setOpponentDone(true);
 
       channelRef.current = supabase
-        .channel(`play-${duelId}`)
+        .channel(`play-${duelId}-${user.id}-${Date.now()}`)
         .on("postgres_changes",
           { event: "UPDATE", schema: "public", table: "duels", filter: `id=eq.${duelId}` },
           (payload) => {
@@ -243,8 +243,15 @@ export default function DuelPlayPage() {
 
     init();
     return () => {
-      if (channelRef.current) supabase.removeChannel(channelRef.current);
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (channelRef.current) {
+        void supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
     };
   }, [duelId, router]);
 
@@ -252,11 +259,11 @@ export default function DuelPlayPage() {
   useEffect(() => {
     if (phase === "result") {
       if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
+        void supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
       router.prefetch("/dashboard");
-      router.prefetch("/duel/negotiate");
+      router.prefetch("/duel/challenge");
     }
   }, [phase, router]);
 
@@ -459,12 +466,19 @@ export default function DuelPlayPage() {
           )}
 
           <div className="flex flex-col gap-3">
-            <button onClick={() => router.push("/duel/negotiate")}
-              className="w-full rounded-2xl bg-orange-500 py-4 font-black text-black text-lg hover:bg-orange-400 transition-all hover:scale-[1.01] active:scale-[0.99]">
+            <button
+              type="button"
+              onClick={() => router.replace("/duel/challenge")}
+              className="w-full rounded-2xl bg-orange-500 py-4 text-lg font-black text-black transition-all hover:scale-[1.01] hover:bg-orange-400 active:scale-[0.99]"
+            >
               Nouveau duel ⚔️
             </button>
-            <button onClick={() => router.push("/dashboard")}
-              className="w-full rounded-2xl border border-white/8 py-4 font-bold text-white/50 text-sm hover:text-white/70 hover:border-white/15 transition-all">
+
+            <button
+              type="button"
+              onClick={() => router.replace("/dashboard")}
+              className="w-full rounded-2xl border border-white/8 py-4 text-sm font-bold text-white/50 transition-all hover:border-white/15 hover:text-white/70"
+            >
               Retour au dashboard
             </button>
           </div>

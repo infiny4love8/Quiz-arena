@@ -21,7 +21,7 @@ type Round = {
 };
 
 const ROUNDS = 5;
-const MEMORIZE_TIME = 3;
+const MEMORIZE_TIME = 4;
 const ANSWER_TIME = 7;
 
 const EMOJIS = [

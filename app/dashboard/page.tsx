@@ -431,7 +431,7 @@ export default function DashboardPage() {
           <ActionCard
             href="/support"
             icon="💬"
-            title="Support"
+            title="Aide"
             description="Besoin d’aide ?"
           />
         </div>
