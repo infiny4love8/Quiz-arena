@@ -15,8 +15,8 @@ const MIN_CUSTOM = 50;
 const MAX_CUSTOM = 5000;
 const MAX_FILE_SIZE = 6 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const MONCASH_NUMBER = "50938998073";
-const MONCASH_DISPLAY = "+509 3899-8073";
+const MONCASH_NUMBER = "50934764064";
+const MONCASH_DISPLAY = "+509 34764064";
 
 type DepositTab = "coins" | "tickets";
 type PaymentMethod = "moncash" | "paypal" | null;

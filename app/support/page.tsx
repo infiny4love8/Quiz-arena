@@ -71,7 +71,7 @@ ${form.message}`;
     setSuccess(true);
 
     window.open(
-      `https://wa.me/50938998073?text=${encodedMessage}`,
+      `https://wa.me/50934764064?text=${encodedMessage}`,
       "_blank"
     );
   };
