@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-const UNLOCK_AT = new Date("2026-08-20T18:00:00-04:00").getTime();
+const UNLOCK_AT = new Date("2026-08-16T18:00:00-04:00").getTime();
 
 type Countdown = {
   days: number;
