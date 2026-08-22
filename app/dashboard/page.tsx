@@ -407,7 +407,7 @@ export default function DashboardPage() {
           />
 
           <ActionCard
-            href="/defi"
+            href="/defis"
             icon="🎁"
             title="Defis"
             description="Gagne des récompenses"
@@ -422,7 +422,7 @@ export default function DashboardPage() {
           />
 
           <ActionCard
-            href="/withdraw"
+            href="/withdra"
             icon="💸"
             title="Retrait"
             description="Retire tes gains"
