@@ -407,9 +407,9 @@ export default function DashboardPage() {
           />
 
           <ActionCard
-            href="/missions"
+            href="/defis"
             icon="🎁"
-            title="Missions"
+            title="Defis"
             description="Gagne des récompenses"
             badge="Nouveau"
           />
