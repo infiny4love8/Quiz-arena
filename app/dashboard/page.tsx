@@ -407,7 +407,7 @@ export default function DashboardPage() {
           />
 
           <ActionCard
-            href="/defis"
+            href="/defi"
             icon="🎁"
             title="Defis"
             description="Gagne des récompenses"
