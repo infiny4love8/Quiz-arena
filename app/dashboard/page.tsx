@@ -422,7 +422,7 @@ export default function DashboardPage() {
           />
 
           <ActionCard
-            href="/withdra"
+            href="/withdraw"
             icon="💸"
             title="Retrait"
             description="Retire tes gains"
