@@ -428,7 +428,7 @@ function TournamentCard({
             bg: "#1D2E22", bd: "#3A5940",
             ic: "ti-medal", icC: "#4EDB8E", lbl: "1er place",
             // FIX 4 : affichage prix dynamique
-            val: isActive ? `${prizeNow} GDS` : "220 – 440 GDS + 40xp", vc: "#4EDB8E",
+             val: "220–440 GDS + 40xp", vc: "#4EDB8E",
           },
           {
             bg: "#1B221C", bd: "#28312B",
@@ -438,12 +438,12 @@ function TournamentCard({
           {
             bg: "#12160F", bd: "#28312B",
             ic: "ti-medal-2", icC: "#5E6E5C", lbl: "3e place",
-            val: "10 GDS + 20 XP", vc: "#C7D6C4",
+            val: " cashback + 20 XP", vc: "#C7D6C4",
           },
           {
             bg: "#12160F", bd: "#28312B",
             ic: "ti-refresh", icC: "#5E6E5C", lbl: "Autres joueurs",
-            val: "5 GDS + 15 XP", vc: "#8FA089",
+            val: "cashback + 15 XP", vc: "#8FA089",
           },
         ].map((p, i) => (
           <div key={i} style={{
